@@ -31,17 +31,20 @@
     "url": "https://github.com/subh05sus/multiclaude/issues"
   },
   "keywords": [
+    "anthropic",
     "claude",
     "claude-code",
-    "anthropic",
     "cli",
+    "dashboard",
+    "linux",
+    "macos",
     "multi-account",
     "usage",
-    "dashboard",
-    "macos"
+    "windows"
   ],
   "os": [
     "darwin",
-    "linux"
+    "linux",
+    "win32"
   ]
 }
