@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        node: ['22', '24']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm ci
+      - run: npm run check
+      - run: npm run lint
+      - run: npm test
+
+  menubar:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sh menubar/build.sh "$RUNNER_TEMP/MultiClaude.app"

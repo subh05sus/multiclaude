@@ -1,0 +1,4 @@
+#!/bin/sh
+# Launcher for multiclaude. Node 23.6+ runs the TypeScript sources directly.
+DIR="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+exec node --disable-warning=ExperimentalWarning "$DIR/src/cli.ts" "$@"

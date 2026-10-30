@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="mc-token" content="__MC_SECRET__">
+  <meta name="color-scheme" content="dark">
+  <title>multiclaude</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="app.css">
+  <script src="boot.js"></script>
+</head>
+<body>
+  <header class="topbar-wrap">
+    <div class="topbar" id="topbar">
+      <a class="brand" href="#accounts" aria-label="multiclaude, accounts">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="9" cy="12" r="6.2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="15" cy="12" r="6.2" fill="none" stroke="currentColor" stroke-width="1.8" opacity=".55"/></svg>
+        <span>multiclaude</span>
+      </a>
+      <nav class="seg island nav-island" id="nav" role="tablist" aria-label="Pages">
+        <span class="seg-thumb lens" aria-hidden="true"></span>
+        <a role="tab" href="#accounts" data-page="accounts">Accounts</a>
+        <a role="tab" href="#sessions" data-page="sessions">Sessions</a>
+        <a role="tab" href="#stats" data-page="stats">Stats</a>
+        <a role="tab" href="#activity" data-page="activity">Activity</a>
+        <a role="tab" href="#settings" data-page="settings">Settings</a>
+      </nav>
+      <div class="topbar-actions island">
+        <button class="icon-btn" id="refresh" type="button" aria-label="Refresh usage" title="Refresh usage">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v4.5h-4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button class="btn btn-primary" id="start-auto" type="button">Start session</button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" tabindex="-1">
+    <section class="page" id="page-accounts" data-page="accounts" aria-labelledby="h-accounts"></section>
+    <section class="page" id="page-sessions" data-page="sessions" aria-labelledby="h-sessions" hidden></section>
+    <section class="page" id="page-stats" data-page="stats" aria-labelledby="h-stats" hidden></section>
+    <section class="page" id="page-activity" data-page="activity" aria-labelledby="h-activity" hidden></section>
+    <section class="page" id="page-settings" data-page="settings" aria-labelledby="h-settings" hidden></section>
+  </main>
+
+  <nav class="tabbar island" id="tabbar" aria-label="Pages">
+    <span class="seg-thumb lens tab-lens" aria-hidden="true"></span>
+    <a href="#accounts" data-page="accounts"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="12" r="5.5"/><circle cx="15" cy="12" r="5.5"/></svg><span>Accounts</span></a>
+    <a href="#sessions" data-page="sessions"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h14M5 12h14M5 18h9"/></svg><span>Sessions</span></a>
+    <a href="#stats" data-page="stats"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 19V11M12 19V5M18 19v-6"/></svg><span>Stats</span></a>
+    <a href="#activity" data-page="activity"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.5 2"/></svg><span>Activity</span></a>
+    <a href="#settings" data-page="settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg><span>Settings</span></a>
+  </nav>
+
+  <div class="toast-wrap" aria-live="polite" id="toasts"></div>
+  <div class="tooltip" id="tooltip" role="tooltip" hidden></div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
