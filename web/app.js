@@ -843,6 +843,8 @@ const ACT_KIND = {
   handover: ['Switches', 'var(--blue)', '<path d="M5 12h14M13 6l6 6-6 6"/>'],
   alert: ['Alerts', 'var(--orange)', '<path d="M12 4l9 16H3zM12 10v4M12 17v.5"/>'],
   reset: ['Alerts', 'var(--green)', '<path d="M5 12a7 7 0 1 0 2-5M5 4v4h4"/>'],
+  'limit-wait': ['Alerts', 'var(--orange)', '<circle cx="12" cy="12" r="8"/><path d="M10 9v6M14 9v6"/>'],
+  resume: ['Switches', 'var(--green)', '<path d="M8 5l10 7-10 7z"/>'],
   'fallback-on': ['API key', 'var(--purple)', '<circle cx="9" cy="12" r="4"/><path d="M13 12h8M18 12v3"/>'],
   'fallback-off': ['API key', 'var(--green)', '<path d="M5 12l4 4 10-10"/>'],
   'fallback-cap': ['API key', 'var(--red)', '<circle cx="12" cy="12" r="8"/><path d="M7 7l10 10"/>'],
@@ -907,6 +909,7 @@ function renderSettings() {
           <div class="row set-row"><div class="grow"><div class="row-title">Notify me</div><div class="row-sub">A desktop notification when an account crosses a level, naming the next account with room.</div></div><div class="ctl">${sw('alerts.enabled', s.alerts.enabled, 'Usage alerts')}<span class="saved-slot"></span></div></div>
           <div class="row set-row"><div class="grow"><div class="row-title">Levels</div></div><div class="ctl chips-edit" id="levels">${s.alerts.thresholds.map((t) => html`<span class="chip">${t}%<button type="button" data-rm-level="${t}" aria-label="Remove ${t}%">×</button></span>`)}<input class="field inline-input" id="add-level" inputmode="numeric" placeholder="+ %" aria-label="Add a level"><span class="saved-slot"></span></div></div>
           <div class="row set-row"><div class="grow"><div class="row-title">Tell me when a limit resets</div></div><div class="ctl">${sw('alerts.notifyReset', s.alerts.notifyReset, 'Reset notifications')}<span class="saved-slot"></span></div></div>
+          <div class="row set-row"><div class="grow"><div class="row-title">Continue stopped sessions by themselves</div><div class="row-sub">When a session stops at its account's limit, it waits for that account to reset and then carries on. It never moves to another account; the notification names one with room if you'd rather run <code>mc next</code>.</div></div><div class="ctl">${sw('autoResume.enabled', s.autoResume?.enabled ?? true, 'Auto-resume')}<span class="saved-slot"></span></div></div>
           <div class="row set-row"><div class="grow"><div class="row-title">Check usage every</div><div class="row-sub">For accounts with no open session. Open sessions report on their own.</div></div><div class="ctl"><div class="stepper" data-stepper="pollMinutes"><button type="button" aria-label="Less often">−</button><output class="tnum">${s.pollMinutes} min</output><button type="button" aria-label="More often">+</button></div><span class="saved-slot"></span></div></div>
         </div>
       </div>

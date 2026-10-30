@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0 — 2026-10-31
+
+- **Auto-resume:** when a session stops at its account's usage limit, a background `StopFailure` hook waits for
+  that account to reset, confirms with Anthropic, and wakes the session to continue where it left off. It never
+  moves the session to another account; the notification names one with room if you'd rather `mc next`. On by
+  default after `mc setup`; `mc autoresume on|off|status` and a dashboard switch.
+- Windows: hooks and the status line call a bare `node`, so they also run when Claude Code uses PowerShell.
+
 ## 0.2.0 — 2026-10-30
 
 - **Windows support:** `mc.cmd`, start at login from the Startup folder, `claude` function in PowerShell and Git

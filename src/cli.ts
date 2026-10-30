@@ -26,6 +26,7 @@ const HELP = `multiclaude (mc) — several Claude accounts in one Claude Code
   mc auto [claude args]       start on the first account in your order with room
   mc next [--fresh]           move this folder's latest session to the next account with room
   mc shell on|off|status      make plain \`claude\` pick an account like \`mc auto\` (opt-in)
+  mc autoresume on|off|status continue a session by itself when its account's limit resets
   mc resume <name> [id]       continue a session (default: the latest here) on an account
   mc handover <id> --to <name>  start fresh on an account with a handover note
 
@@ -315,6 +316,23 @@ async function cmdShell(args: string[]): Promise<void> {
   }
 }
 
+async function cmdAutoResume(args: string[]): Promise<void> {
+  const { setResumeHook, resumeHookInstalled } = await import('./setup.ts');
+  const what = args[0] ?? 'status';
+  if (what === 'on' || what === 'off') {
+    const on = what === 'on';
+    updateConfig((c) => (c.autoResume.enabled = on));
+    setResumeHook(on);
+    logActivity('settings', `Auto-resume turned ${what}`);
+    console.log(on
+      ? 'Auto-resume on. When a session stops at a usage limit, it waits for that account to reset and then continues by itself. Applies to sessions started from now on (restart open ones).'
+      : 'Auto-resume off. Sessions that hit a limit just stop, as before.');
+    return;
+  }
+  const cfg = loadConfig();
+  console.log(`Auto-resume: ${cfg.autoResume.enabled ? 'on' : 'off'} · hook ${resumeHookInstalled() ? 'installed' : 'not installed'} · gives up after ${cfg.autoResume.maxWaitHours} h`);
+}
+
 async function cmdSetup(args: string[]): Promise<void> {
   const { installClaudeSettings, installBinLink, installAutostart, installMenubar } = await import('./setup.ts');
   const linkNote = installBinLink();
@@ -371,6 +389,10 @@ async function cmdDoctor(): Promise<void> {
     if (!isMain(p.name)) ok(existsSync(claudeJsonPath(p.name)), `${p.name}: profile folder`, `mc add ${p.name}`);
   }
   if (cfg.fallback.enabled) ok(Boolean(await readApiKey()), 'API key for the fallback', 'mc fallback key');
+  if (cfg.autoResume.enabled) {
+    const { resumeHookInstalled } = await import('./setup.ts');
+    ok(resumeHookInstalled(), 'auto-resume hook installed', 'mc autoresume on');
+  }
   const { shellStatus } = await import('./shell.ts');
   const sh = shellStatus();
   console.log(`${sh.installed.length ? '✓' : '·'} plain \`claude\` ${sh.installed.length ? 'picks an account' : 'runs main (optional: mc shell on)'}`);
@@ -387,6 +409,7 @@ async function main(): Promise<void> {
     case 'auto': return cmdAuto(args);
     case 'claude': return cmdClaude(args);
     case 'shell': return cmdShell(args);
+    case 'autoresume': return cmdAutoResume(args);
     case 'next': return cmdNext(args);
     case 'resume': return cmdResume(args);
     case 'handover': return cmdHandover(args);
@@ -428,6 +451,7 @@ async function main(): Promise<void> {
     case 'statusline': return (await import('./statusline.ts')).statusline();
     case 'hook':
       if (args[0] === 'session-start') return (await import('./statusline.ts')).sessionStartHook();
+      if (args[0] === 'limit-wait') return (await import('./autoresume.ts')).limitWaitHook();
       return;
     case 'setup': return cmdSetup(args);
     case 'uninstall': return cmdUninstall();

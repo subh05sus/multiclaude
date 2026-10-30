@@ -9,6 +9,7 @@
 - [The menu bar app](#the-menu-bar-app)
 - [The status line](#the-status-line)
 - [Alerts](#alerts)
+- [Auto-resume](#auto-resume)
 - [The API-key fallback](#the-api-key-fallback)
 - [Sessions and handover notes](#sessions-and-handover-notes)
 - [Stats](#stats)
@@ -225,6 +226,37 @@ confirms it with Anthropic's usage endpoint, so a stale reading can't set one of
 
 Change the levels in **Settings → Usage alerts**, or `alerts.thresholds` in the [config](configuration.md).
 
+## Auto-resume
+
+On by default after `mc setup`. When a Claude Code session stops because its account hit a usage limit:
+
+1. A background hook (`StopFailure`, matcher `rate_limit`) works out which of that account's windows is full and
+   when it resets.
+2. You get a notification: "work is out until 6:30 PM. This session will continue by itself when it resets."
+   If another account has room, it says so, in case you'd rather run `mc next` now.
+3. Just after the reset time, it checks with Anthropic that the limit really lifted (and keeps checking every
+   few minutes if the reset is late), then wakes the session: Claude continues where it stopped, without
+   repeating finished work.
+
+Details:
+- It waits for the **same** account. It never moves the session to another one.
+- A short rate limit (the account isn't actually full) is retried after a minute.
+- One waiter per session. Closing the session, turning auto-resume off, or `maxWaitHours` (8 days by default,
+  enough for a weekly limit) ends the wait quietly.
+- Activity shows "Session paused at the limit until …" and "Limit lifted; continuing the session".
+
+```sh
+mc autoresume status
+mc autoresume off      # sessions just stop at a limit, as before
+mc autoresume on
+```
+
+Or **Settings → Usage alerts → Continue stopped sessions by themselves**. Changes apply to sessions started
+afterwards.
+
+Claude Code also has its own `autoContinueAtUsageLimit` setting. You can leave it on; if both fire, Claude gets a
+second "continue" note and carries on.
+
 ## The API-key fallback
 
 Off by default. With it on, sessions started by multiclaude route through a relay on `127.0.0.1` that passes
@@ -317,6 +349,7 @@ themselves, so after moving logins use each account on one Mac only, or sign in 
 | `mc pick priority\|most-room` | How accounts are picked |
 | `mc fallback on\|off\|cap <usd>\|key\|status` | The API-key fallback |
 | `mc shell on\|off\|status` | Make plain `claude` pick an account |
+| `mc autoresume on\|off\|status` | Continue sessions by themselves when their account's limit resets |
 | `mc ui` | Open the dashboard |
 | `mc start` / `mc stop` | Start / stop the background service |
 | `mc daemon` | Run the service in the foreground (shows errors) |

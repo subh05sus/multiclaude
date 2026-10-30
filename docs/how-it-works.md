@@ -75,6 +75,18 @@ For each account in priority order:
 In `priority` mode the first remaining account wins; in `most-room` mode the one with the lowest peak. `mc next`
 does the same while excluding the account the session was on.
 
+## Auto-resume
+
+Claude Code runs `StopFailure` hooks when a turn ends in an error, with the error type (`rate_limit`,
+`server_error`, …) as the matcher. multiclaude registers one for `rate_limit` with `asyncRewake: true`: the hook
+runs in the background, and when it exits with code 2, Claude Code wakes the session with the hook's message.
+
+`mc hook limit-wait` reads the account's usage (the usage endpoint, falling back to the last status-line or relay
+reading), takes the latest reset time among the full windows, sleeps until just after it, confirms with the usage
+endpoint that every window is below 99% and not limited, then exits 2 with "continue exactly where you left
+off". It exits 0 (no wake) if the session's process goes away, auto-resume is turned off, or `maxWaitHours`
+passes. A lock file per session stops a second rate-limit stop from starting a second waiter.
+
 ## Moving a session
 
 All profiles share `~/.claude/projects`, so every profile can see every conversation. `mc next` and

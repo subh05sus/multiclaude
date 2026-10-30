@@ -11,11 +11,21 @@ export function fwd(p: string): string {
   return IS_WIN ? p.replace(/\\/g, '/') : p;
 }
 
-/** The command line that runs the CLI with this Node, for settings.json, shell files and autostart. */
+/** The command line that runs the CLI with this Node, for shell files and autostart. */
 export function cliCommand(...args: string[]): string {
   const node = fwd(process.execPath);
   const cli = fwd(join(REPO_DIR, 'src', 'cli.ts'));
   return [`"${node}"`, '--disable-warning=ExperimentalWarning', `"${cli}"`, ...args].join(' ');
+}
+
+/**
+ * For Claude Code's settings.json on Windows. Claude Code runs hooks and the status line through
+ * Git Bash, or PowerShell when there's no Git Bash, and PowerShell won't run a line that starts with
+ * a quoted path. A bare `node` (on PATH) works in bash, cmd and PowerShell alike.
+ */
+export function hookCommand(...args: string[]): string {
+  const cli = fwd(join(REPO_DIR, 'src', 'cli.ts'));
+  return ['node', '--disable-warning=ExperimentalWarning', `"${cli}"`, ...args].join(' ');
 }
 
 /** The `mc` launcher to put in commands a person reads: mc.cmd on Windows, bin/mc elsewhere. */

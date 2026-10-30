@@ -41,7 +41,7 @@ export function appendJsonLine(file: string, data: unknown): void {
 
 export type ActivityKind =
   | 'launch' | 'switch' | 'fallback-on' | 'fallback-off' | 'fallback-cap' | 'alert' | 'reset'
-  | 'profile-added' | 'profile-removed' | 'handover' | 'heal' | 'error' | 'settings' | 'import';
+  | 'profile-added' | 'profile-removed' | 'handover' | 'heal' | 'error' | 'settings' | 'import' | 'limit-wait' | 'resume';
 
 export interface Activity {
   at: string;

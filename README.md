@@ -40,6 +40,9 @@ Live usage for every account in a dashboard, the menu bar, the terminal and Clau
   account with room, and again when a limit resets.
 - **Move a session in one step.** `mc next` reopens the conversation in this folder on the next account with
   room, with the whole context. `mc next --fresh` starts clean there with a short handover note instead.
+- **Auto-resume.** When a session stops at its account's usage limit, it waits for that account to reset,
+  then continues by itself, picking up where it left off. The notification also names another account with room,
+  in case you'd rather `mc next` now.
 - **Optional paid API-key fallback.** When Anthropic answers that a plan's limit is reached, a local relay resends
   that request on your own API key until the plan resets, up to a daily dollar cap you set.
 - **Stats** from Claude Code's session files on your computer: what your work would have cost at API prices, per day,
@@ -48,7 +51,8 @@ Live usage for every account in a dashboard, the menu bar, the terminal and Clau
 
 ### What it deliberately doesn't do
 
-It never moves a running conversation to another Claude account by itself. Pooling subscriptions to get around
+It never moves a running conversation to another Claude account by itself (auto-resume waits for the *same*
+account to reset). Pooling subscriptions to get around
 their usage limits is against Anthropic's terms and can get accounts banned, so switching accounts is always your
 click or your command (`mc next`). The only automatic switch is to **your own API key**, which you pay for per
 request.

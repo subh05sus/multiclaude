@@ -30,6 +30,7 @@ export interface AppState {
   pollMinutes: number;
   pick: PickResult;
   alerts: AlertConfig;
+  autoResume: Config['autoResume'];
   fallback: Config['fallback'] & { spentToday: number; hasKey: boolean };
   profiles: ProfileState[];
 }

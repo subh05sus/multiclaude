@@ -20,6 +20,7 @@ Most settings are in the dashboard (**Settings**) or have a command. They all li
   ],
   "fallback": { "enabled": false, "dailyCapUsd": 5, "assumeFirstParty": true, "profiles": [] },
   "alerts": { "enabled": true, "thresholds": [80, 95], "notifyReset": true },
+  "autoResume": { "enabled": true, "maxWaitHours": 192 },
   "pollMinutes": 5,
   "terminalApp": "Terminal"
 }
@@ -44,6 +45,8 @@ Most settings are in the dashboard (**Settings**) or have a command. They all li
 | `alerts.enabled` | `true` | Desktop notifications |
 | `alerts.thresholds` | `[80, 95]` | Levels that notify, in percent |
 | `alerts.notifyReset` | `true` | Also notify when a window that crossed a level resets |
+| `autoResume.enabled` | `true` | Continue a session by itself once its account's limit resets (`mc autoresume`) |
+| `autoResume.maxWaitHours` | `192` | Stop waiting after this long |
 | `pollMinutes` | `5` | How often to ask Anthropic for usage of accounts with no open session (1–60) |
 | `terminalApp` | `"Terminal"` | `"Terminal"` or `"iTerm"`, for the dashboard and menu bar's Start buttons |
 | `statuslineWrap` | | Your previous status line command, shown before multiclaude's. Set by `mc setup` |
@@ -84,6 +87,8 @@ multiclaude sets these for the Claude Code it starts:
 | `~/.multiclaude/spend.json` | API-key spend per day, account and model (120 days) |
 | `~/.multiclaude/cache/stats.json` | Stats cache (safe to delete; rebuilt on the next visit) |
 | `~/.multiclaude/handovers/*.md` | Handover notes |
+| `~/.multiclaude/waiters/<session>.json` | A session waiting to auto-resume (removed when it resumes or stops) |
+| `~/.multiclaude/autoresume-off` | If this file exists, auto-resume is paused without editing the config |
 | `~/.multiclaude/daemon.log` | Service output and errors |
 | `~/.multiclaude/MultiClaude.app` | The menu bar app |
 | Keychain `Claude Code-credentials[-<hash>]` (macOS) or `<profile>/.credentials.json` (Windows, Linux) | Claude Code's own login for each profile (read only) |

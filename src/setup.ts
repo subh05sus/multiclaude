@@ -4,12 +4,15 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { HOME, MAIN_CLAUDE_DIR, MC_BIN, MC_DIR, REPO_DIR, LOG_FILE } from './paths.ts';
 import { loadConfig, saveConfig } from './config.ts';
 import { logActivity } from './util.ts';
-import { IS_WIN, IS_MAC, cliCommand, fwd } from './platform.ts';
+import { IS_WIN, IS_MAC, cliCommand, hookCommand, fwd } from './platform.ts';
 
 const SETTINGS = () => join(MAIN_CLAUDE_DIR, 'settings.json');
 // Windows runs these through whatever shell Claude Code uses there, so call Node directly.
-const STATUS_CMD = IS_WIN ? cliCommand('statusline') : `${MC_BIN} statusline`;
-const HOOK_CMD = IS_WIN ? cliCommand('hook', 'session-start') : `${MC_BIN} hook session-start`;
+const STATUS_CMD = IS_WIN ? hookCommand('statusline') : `${MC_BIN} statusline`;
+const HOOK_CMD = IS_WIN ? hookCommand('hook', 'session-start') : `${MC_BIN} hook session-start`;
+const RESUME_CMD = IS_WIN ? hookCommand('hook', 'limit-wait') : `${MC_BIN} hook limit-wait`;
+/** Long enough for a weekly limit; the hook gives up on its own after autoResume.maxWaitHours. */
+const RESUME_TIMEOUT = 8 * 24 * 3600;
 const LOCAL_BIN = join(HOME, '.local', 'bin');
 const AGENTS = join(HOME, 'Library', 'LaunchAgents');
 const DAEMON_LABEL = 'com.multiclaude.daemon';
@@ -18,7 +21,7 @@ export const MENUBAR_APP = join(MC_DIR, 'MultiClaude.app');
 
 type Settings = {
   statusLine?: { type: string; command: string; padding?: number };
-  hooks?: Record<string, { matcher?: string; hooks: { type: string; command: string; timeout?: number }[] }[]>;
+  hooks?: Record<string, { matcher?: string; hooks: { type: string; command: string; timeout?: number; asyncRewake?: boolean; statusMessage?: string }[] }[]>;
   [k: string]: unknown;
 };
 
@@ -54,11 +57,47 @@ export function installClaudeSettings(): string[] {
     ss.push({ hooks: [{ type: 'command', command: HOOK_CMD, timeout: 5 }] });
     changes.push('SessionStart hook (records which account runs each session)');
   }
+  if (installResumeHook(s)) changes.push('StopFailure hook (continues a session when its limit resets)');
   if (changes.length) {
     writeSettings(s);
     logActivity('settings', `Added to settings.json: ${changes.join('; ')}`);
   }
   return changes;
+}
+
+/**
+ * Auto-resume: on a rate_limit stop, run `mc hook limit-wait` in the background; it exits 2
+ * (which wakes the session) once that account's limit has lifted. Returns true if it changed s.
+ */
+function installResumeHook(s: Settings): boolean {
+  s.hooks ??= {};
+  const sf = (s.hooks.StopFailure ??= []);
+  if (sf.some((g) => g.hooks?.some((h) => h.command === RESUME_CMD))) return false;
+  sf.push({ matcher: 'rate_limit', hooks: [{ type: 'command', command: RESUME_CMD, timeout: RESUME_TIMEOUT, asyncRewake: true }] });
+  return true;
+}
+
+export function setResumeHook(on: boolean): boolean {
+  const s = readSettings();
+  let changed = false;
+  if (on) changed = installResumeHook(s);
+  else {
+    const sf = s.hooks?.StopFailure;
+    if (sf) {
+      const kept = sf.filter((g) => !g.hooks?.some((h) => h.command === RESUME_CMD));
+      if (kept.length !== sf.length) {
+        changed = true;
+        if (kept.length) s.hooks!.StopFailure = kept;
+        else delete s.hooks!.StopFailure;
+      }
+    }
+  }
+  if (changed) writeSettings(s);
+  return changed;
+}
+
+export function resumeHookInstalled(): boolean {
+  return Boolean(readSettings().hooks?.StopFailure?.some((g) => g.hooks?.some((h) => h.command === RESUME_CMD)));
 }
 
 export function removeClaudeSettings(): string[] {
@@ -69,6 +108,15 @@ export function removeClaudeSettings(): string[] {
     if (cfg.statuslineWrap) s.statusLine = { type: 'command', command: cfg.statuslineWrap };
     else delete s.statusLine;
     changes.push('status line');
+  }
+  const sf = s.hooks?.StopFailure;
+  if (sf) {
+    const kept = sf.filter((g) => !g.hooks?.some((h) => h.command === RESUME_CMD));
+    if (kept.length !== sf.length) {
+      if (kept.length) s.hooks!.StopFailure = kept;
+      else delete s.hooks!.StopFailure;
+      changes.push('StopFailure auto-resume hook');
+    }
   }
   const ss = s.hooks?.SessionStart;
   if (ss) {

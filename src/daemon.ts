@@ -16,7 +16,7 @@ import { listSessions, statsReport, refreshStats } from './sessions.ts';
 import { buildHandover, handoverMarkdown } from './handover.ts';
 import type { AppState, ProfileState } from './state.ts';
 
-const VERSION = '0.2.0';
+const VERSION = '0.3.0';
 
 const apiUsage = new Map<string, Usage>();
 const infoCache = new Map<string, { at: number; info: ProfileInfo }>();
@@ -66,6 +66,7 @@ async function buildState(cfg: Config): Promise<AppState> {
     pollMinutes: cfg.pollMinutes,
     pick,
     alerts: cfg.alerts,
+    autoResume: cfg.autoResume,
     fallback: { ...cfg.fallback, spentToday: spentToday(), hasKey },
     profiles,
   };
@@ -239,6 +240,12 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, url: URL, se
       if (typeof a.enabled === 'boolean') cfg.alerts.enabled = a.enabled;
       if (typeof a.notifyReset === 'boolean') cfg.alerts.notifyReset = a.notifyReset;
       if (Array.isArray(a.thresholds)) cfg.alerts.thresholds = [...new Set(a.thresholds.map(Number).filter((n) => n > 0 && n <= 100))].sort((x, y) => x - y);
+    }
+    const ar = body.autoResume as Partial<Config['autoResume']> | undefined;
+    if (ar && typeof ar.enabled === 'boolean') {
+      cfg.autoResume.enabled = ar.enabled;
+      const { setResumeHook } = await import('./setup.ts');
+      setResumeHook(ar.enabled);
     }
     const f = body.fallback as Partial<Config['fallback']> | undefined;
     if (f) {

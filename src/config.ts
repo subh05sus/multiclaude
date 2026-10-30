@@ -38,6 +38,13 @@ export interface AlertConfig {
   notifyReset: boolean;
 }
 
+export interface AutoResumeConfig {
+  /** When a session stops at a usage limit, wait for that account to reset, then continue it. */
+  enabled: boolean;
+  /** Give up after this long (a weekly limit can be days away). */
+  maxWaitHours: number;
+}
+
 export interface Config {
   version: 1;
   port: number;
@@ -50,6 +57,7 @@ export interface Config {
   profiles: ProfileConfig[];
   fallback: FallbackConfig;
   alerts: AlertConfig;
+  autoResume: AutoResumeConfig;
   /** Minutes between usage checks for accounts with no open session. */
   pollMinutes: number;
   terminalApp: 'Terminal' | 'iTerm';
@@ -69,6 +77,7 @@ export function defaultConfig(): Config {
     profiles: [{ name: MAIN_PROFILE }],
     fallback: { enabled: false, dailyCapUsd: 5, assumeFirstParty: true, profiles: [] },
     alerts: { enabled: true, thresholds: [80, 95], notifyReset: true },
+    autoResume: { enabled: true, maxWaitHours: 192 },
     pollMinutes: 5,
     terminalApp: 'Terminal',
   };
@@ -82,6 +91,7 @@ export function loadConfig(): Config {
     ...saved,
     fallback: { ...base.fallback, ...(saved.fallback ?? {}) },
     alerts: { ...base.alerts, ...(saved.alerts ?? {}) },
+    autoResume: { ...base.autoResume, ...(saved.autoResume ?? {}) },
     profiles: saved.profiles?.length ? saved.profiles : base.profiles,
   };
   if (!cfg.profiles.some((p) => p.name === MAIN_PROFILE)) cfg.profiles.unshift({ name: MAIN_PROFILE });

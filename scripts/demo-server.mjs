@@ -21,9 +21,10 @@ const profile = (name, color, position, email, plan, five, week, extra = {}) => 
 });
 
 const state = {
-  version: '0.1.1', platform: 'darwin', updatedAt: now, port: PORT, pickMode: 'priority', switchAt: 90, defaultProfile: 'work',
+  version: '0.3.0', platform: 'darwin', updatedAt: now, port: PORT, pickMode: 'priority', switchAt: 90, defaultProfile: 'work',
   terminalApp: 'Terminal', pollMinutes: 5,
   alerts: { enabled: true, thresholds: [80, 95], notifyReset: true },
+  autoResume: { enabled: true, maxWaitHours: 192 },
   fallback: { enabled: true, dailyCapUsd: 5, assumeFirstParty: true, profiles: [], spentToday: 1.24, hasKey: true },
   profiles: [
     profile('work', 0, 1, 'dev@example.com', 'Max 20x', 94, 41, { label: 'Team Max' }),

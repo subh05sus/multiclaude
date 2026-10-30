@@ -73,6 +73,13 @@ and start a new session with `claude` or `mc`.
 Look at Activity for the reading it was based on, and press refresh. Alerts on status-line readings are confirmed
 with Anthropic first, so it should be rare. Clearing `~/.multiclaude/alert-state.json` resets which levels fired.
 
+**A session didn't continue after its limit reset**
+- `mc autoresume status` should say on and installed. Sessions started before you turned it on don't have the
+  hook; restart them.
+- Activity shows "Session paused at the limit until …" when it started waiting, and why it stopped if it did.
+- The session has to stay open while it waits. Closing the window ends the wait.
+- If the reset came and went, the next check runs within 5 minutes.
+
 **The API-key fallback didn't kick in**
 - Was the session started after turning it on? Open sessions keep their route; restart them.
 - `mc fallback status`: the key is saved and today's spend is under the cap?
