@@ -12,7 +12,12 @@ struct Profile: Decodable {
 }
 struct Pick: Decodable { let name: String?; let reason: String }
 struct FallbackCfg: Decodable { let enabled: Bool; let dailyCapUsd: Double; let spentToday: Double; let hasKey: Bool }
-struct AppState: Decodable { let port: Int; let pick: Pick; let fallback: FallbackCfg; let profiles: [Profile] }
+struct AutoResume: Decodable { let enabled: Bool }
+struct Waiter: Decodable { let sessionId: String; let profile: String; let until: Double? }
+struct AppState: Decodable {
+    let port: Int; let pick: Pick; let fallback: FallbackCfg; let profiles: [Profile]
+    let autoResume: AutoResume?; let waiting: [Waiter]?
+}
 
 final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
     let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -64,7 +69,7 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
         guard let s = state else { return }
         // Show the account a new session would go to, with its usage.
         if let name = s.pick.name, let p = s.profiles.first(where: { $0.name == name }) {
-            b.title = " \(name) \(pctText(p.peak))"
+            b.title = " \(name) \(pctText(p.peak))" + ((s.waiting ?? []).isEmpty ? "" : " ⏸")
         } else {
             b.title = " full"
         }
@@ -126,6 +131,31 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
             it.submenu = sub
             menu.addItem(it)
         }
+        // Sessions paused at a limit, continuing by themselves when it resets.
+        let waiting = s.waiting ?? []
+        if !waiting.isEmpty {
+            menu.addItem(.separator())
+            let h = NSMenuItem(title: "Waiting to resume", action: nil, keyEquivalent: "")
+            h.isEnabled = false
+            menu.addItem(h)
+            for w in waiting {
+                var when = "when its limit resets"
+                if let u = w.until {
+                    let d = Date(timeIntervalSince1970: u / 1000)
+                    let f = DateFormatter()
+                    f.dateFormat = Calendar.current.isDateInToday(d) ? "h:mm a" : "EEE h:mm a"
+                    when = "at " + f.string(from: d)
+                }
+                let it = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+                let line = NSMutableAttributedString()
+                line.append(NSAttributedString(string: "⏸ ", attributes: [.foregroundColor: NSColor.systemOrange, .font: NSFont.systemFont(ofSize: 11)]))
+                line.append(NSAttributedString(string: "\(w.profile) session", attributes: [.font: NSFont.systemFont(ofSize: 13)]))
+                line.append(NSAttributedString(string: "   resumes \(when)", attributes: [.foregroundColor: NSColor.secondaryLabelColor, .font: NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .regular)]))
+                it.attributedTitle = line
+                it.isEnabled = false
+                menu.addItem(it)
+            }
+        }
         if s.fallback.enabled {
             menu.addItem(.separator())
             let f = NSMenuItem(title: s.fallback.hasKey ? String(format: "API key: $%.2f of $%.0f today", s.fallback.spentToday, s.fallback.dailyCapUsd) : "API key fallback: no key saved", action: nil, keyEquivalent: "")
@@ -133,6 +163,11 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
             menu.addItem(f)
         }
         menu.addItem(.separator())
+        let ar = NSMenuItem(title: "Auto-resume at limits", action: #selector(toggleAutoResume), keyEquivalent: "")
+        ar.target = self
+        ar.state = (s.autoResume?.enabled ?? true) ? .on : .off
+        ar.toolTip = "When a session stops at its account's limit, continue it by itself once that account resets"
+        menu.addItem(ar)
         menu.addItem(withTitle: "Open dashboard", action: #selector(openDashboard), keyEquivalent: "d").target = self
         menu.addItem(withTitle: "Refresh usage", action: #selector(refreshNow), keyEquivalent: "r").target = self
         menu.addItem(.separator())
@@ -156,6 +191,7 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
         post("/api/profiles/\(name)", ["paused": !p.paused])
     }
     @objc func refreshNow() { post("/api/refresh", [:]) }
+    @objc func toggleAutoResume() { post("/api/config", ["autoResume": ["enabled": !(state?.autoResume?.enabled ?? true)]]) }
     @objc func openDashboard() { NSWorkspace.shared.open(URL(string: "http://127.0.0.1:\(port)/")!) }
     @objc func startService() {
         let p = Process()

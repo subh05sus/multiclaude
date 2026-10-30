@@ -298,7 +298,7 @@ function acctHtml(p) {
     <div class="acct-id">
       <div class="acct-name"><span class="swatch" style="--c:${raw(colorVar(p.color))}"></span><span class="n">${p.name}</span>${p.label ? html`<span class="chip">${p.label}</span>` : ''}</div>
       <div class="acct-who">${who}</div>
-      <div class="acct-tags"><span class="status ${tone}">${reset ? 'Ready again' : word}</span>${p.switchAt !== state.switchAt ? html`<span class="chip">switch at ${p.switchAt}%</span>` : ''}</div>
+      <div class="acct-tags"><span class="status ${tone}">${reset ? 'Ready again' : word}</span>${waitingTag(p.name)}${p.switchAt !== state.switchAt ? html`<span class="chip">switch at ${p.switchAt}%</span>` : ''}</div>
     </div>
     <div class="meters">
       ${p.info.loggedIn ? html`${meterHtml('5-hour', p.usage.fiveHour, p.switchAt, `${p.name}-5h`)}${meterHtml('Weekly', p.usage.sevenDay, p.switchAt, `${p.name}-wk`)}
@@ -315,6 +315,15 @@ function acctHtml(p) {
         </button>
       </div>
     </div>`;
+}
+
+/** "1 session resumes at 6:29 PM" on the account card while sessions wait for its limit to reset. */
+function waitingTag(name) {
+  const w = (state.waiting ?? []).filter((x) => x.profile === name);
+  if (!w.length) return '';
+  const at = w[0].until ? new Date(w[0].until).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : null;
+  const n = w.length === 1 ? '1 session' : `${w.length} sessions`;
+  return html`<span class="chip" title="Paused at the limit; continues by itself when it resets">⏸ ${n} ${at ? `resumes ${new Date(w[0].until).toDateString() === new Date().toDateString() ? 'at' : ''} ${at}` : 'waiting to resume'}</span>`;
 }
 
 function briefingHtml() {

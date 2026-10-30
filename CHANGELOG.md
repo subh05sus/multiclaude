@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.2 — 2026-10-31
+
+- Menu bar app: a "Waiting to resume" section listing sessions paused at a limit and when each will continue, a
+  ⏸ next to the icon's percentage while any session waits, and an "Auto-resume at limits" on/off item.
+- Dashboard: account cards show "⏸ 1 session resumes at 6:29 PM" while a session waits on that account.
+
 ## 0.3.1 — 2026-10-31
 
 - Fix: running `mc setup` again (to update) could fail while reloading the menu bar app's login item, because

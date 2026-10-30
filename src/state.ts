@@ -31,6 +31,8 @@ export interface AppState {
   pick: PickResult;
   alerts: AlertConfig;
   autoResume: Config['autoResume'];
+  /** Sessions paused at a limit, waiting to continue. */
+  waiting: { sessionId: string; profile: string; since: string; until?: number }[];
   fallback: Config['fallback'] & { spentToday: number; hasKey: boolean };
   profiles: ProfileState[];
 }

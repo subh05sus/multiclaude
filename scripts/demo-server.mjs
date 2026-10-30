@@ -25,6 +25,7 @@ const state = {
   terminalApp: 'Terminal', pollMinutes: 5,
   alerts: { enabled: true, thresholds: [80, 95], notifyReset: true },
   autoResume: { enabled: true, maxWaitHours: 192 },
+  waiting: [{ sessionId: 'demo', profile: 'work', since: new Date(now - 0.3 * H).toISOString(), until: now + 2.7 * H }],
   fallback: { enabled: true, dailyCapUsd: 5, assumeFirstParty: true, profiles: [], spentToday: 1.24, hasKey: true },
   profiles: [
     profile('work', 0, 1, 'dev@example.com', 'Max 20x', 94, 41, { label: 'Team Max' }),

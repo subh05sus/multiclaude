@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { loadConfig, type Config } from './config.ts';
 import { MC_DIR } from './paths.ts';
@@ -83,6 +83,8 @@ export interface WaitDeps {
   log: typeof logActivity;
   nextWithRoom: (exclude: string) => string | null;
   enabled: () => boolean;
+  /** Told when the expected resume time is known or changes. */
+  onPlan?: (at?: number) => void;
 }
 
 export interface WaitResult {
@@ -105,6 +107,7 @@ export async function waitForReset(profile: string, cfg: Config, deps: WaitDeps)
     return deps.sessionAlive() && deps.enabled() ? { resume: true, reason: 'a short rate limit' } : { resume: false, reason: 'stopped' };
   }
 
+  deps.onPlan?.(plan.kind === 'reset' ? plan.at : undefined);
   const other = deps.nextWithRoom(profile);
   const until = plan.kind === 'reset' ? ` until ${when(plan.at)}` : '';
   const tail = other ? ` Don't want to wait? Run "mc next" to continue on ${other} now.` : '';
@@ -123,6 +126,7 @@ export async function waitForReset(profile: string, cfg: Config, deps: WaitDeps)
     if (lifted(u)) return { resume: true, reason: 'the limit reset' };
     const next = planWait(u, deps.now());
     plan = next.kind === 'reset' ? next : { kind: 'unknown' };
+    deps.onPlan?.(plan.kind === 'reset' ? plan.at : undefined);
   }
   return { resume: false, reason: `nothing changed in ${cfg.autoResume.maxWaitHours} hours` };
 }
@@ -132,6 +136,31 @@ async function readStdin(): Promise<string> {
   const parts: Buffer[] = [];
   for await (const c of process.stdin) parts.push(c as Buffer);
   return Buffer.concat(parts).toString('utf8');
+}
+
+export interface Waiter {
+  sessionId: string;
+  profile: string;
+  since: string;
+  /** Expected resume time (epoch ms), when known. */
+  until?: number;
+}
+
+/** Sessions currently waiting to auto-resume (their waiter process is still running). */
+export function listWaiters(): Waiter[] {
+  if (!existsSync(WAITERS)) return [];
+  const out: Waiter[] = [];
+  for (const f of readdirSync(WAITERS)) {
+    if (!f.endsWith('.json')) continue;
+    try {
+      const w = JSON.parse(readFileSync(join(WAITERS, f), 'utf8')) as { pid: number; profile: string; since: string; until?: number };
+      if (w.pid && alive(w.pid)) out.push({ sessionId: f.slice(0, -5), profile: w.profile, since: w.since, until: w.until });
+      else rmSync(join(WAITERS, f), { force: true });
+    } catch {
+      /* half-written; next time */
+    }
+  }
+  return out.sort((a, b) => (a.until ?? Infinity) - (b.until ?? Infinity));
 }
 
 /** The hook entry point: `mc hook limit-wait`. Exit 2 wakes the session (asyncRewake). */
@@ -159,7 +188,8 @@ export async function limitWaitHook(): Promise<void> {
   } catch {
     /* no waiter yet */
   }
-  writeFileSync(lock, JSON.stringify({ pid: process.pid, profile, since: new Date().toISOString() }));
+  const since = new Date().toISOString();
+  writeFileSync(lock, JSON.stringify({ pid: process.pid, profile, since }));
   const cleanup = () => rmSync(lock, { force: true });
   process.on('exit', cleanup);
   // Killed (session closed, Claude Code quit, or the timeout hit): leave quietly, no rewake.
@@ -184,6 +214,7 @@ export async function limitWaitHook(): Promise<void> {
       return pickAccount(loadConfig(), s.profiles.map((x) => ({ name: x.name, loggedIn: x.info.loggedIn, usage: x.usage })), [exclude]).name;
     },
     enabled: () => autoResumeEnabled(),
+    onPlan: (at) => writeFileSync(lock, JSON.stringify({ pid: process.pid, profile, since, until: at })),
   });
 
   if (!result.resume) {

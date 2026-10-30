@@ -192,7 +192,9 @@ The icon shows the account a new session would go to and its usage, like `◐ pe
   or signed out, purple on the API key). Each has a submenu: Start a session, Sign in again, Pause, and its email
   and plan;
 - the API key's spend today, when the fallback is on;
-- **Open dashboard** (⌘D), **Refresh usage** (⌘R), **Quit**.
+- **Waiting to resume**: sessions paused at a limit and when each will continue (a ⏸ also appears next to the
+  icon's percentage);
+- **Auto-resume at limits** (on/off), **Open dashboard** (⌘D), **Refresh usage** (⌘R), **Quit**.
 
 If the service isn't running, the menu offers **Start it**.
 

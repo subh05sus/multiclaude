@@ -9,6 +9,7 @@ import { profileInfo, ensureLinks, accountUuidMap, removeProfileDir, isMain, con
 import { fetchUsage, readLiveUsage, mergeUsage, peakPct, writeLiveUsage, writeApiUsage, ownerOf, type Usage } from './usage.ts';
 import { pickAccount, reorder, switchAtFor } from './pick.ts';
 import { checkAlerts, wouldAlert } from './alerts.ts';
+import { listWaiters } from './autoresume.ts';
 import { handleRelay, fallbackState, clearFallback } from './relay.ts';
 import { readApiKey, saveApiKey, deleteApiKey, deleteGenericPassword, claudeKeychainService } from './keychain.ts';
 import { spentToday, readSpend } from './spend.ts';
@@ -16,7 +17,7 @@ import { listSessions, statsReport, refreshStats } from './sessions.ts';
 import { buildHandover, handoverMarkdown } from './handover.ts';
 import type { AppState, ProfileState } from './state.ts';
 
-const VERSION = '0.3.1';
+const VERSION = '0.3.2';
 
 const apiUsage = new Map<string, Usage>();
 const infoCache = new Map<string, { at: number; info: ProfileInfo }>();
@@ -67,6 +68,7 @@ async function buildState(cfg: Config): Promise<AppState> {
     pick,
     alerts: cfg.alerts,
     autoResume: cfg.autoResume,
+    waiting: listWaiters(),
     fallback: { ...cfg.fallback, spentToday: spentToday(), hasKey },
     profiles,
   };
