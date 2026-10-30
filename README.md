@@ -2,7 +2,7 @@
 
 # multiclaude
 
-**Several Claude Pro / Max accounts in one Claude Code, on your own Mac.**
+**Several Claude Pro / Max accounts in one Claude Code, on your own computer (macOS, Windows, Linux).**
 
 Put your accounts in priority order, type `claude`, and it starts on the first one that still has room.
 Live usage for every account in a dashboard, the menu bar, the terminal and Claude Code's status line.
@@ -11,7 +11,7 @@ Live usage for every account in a dashboard, the menu bar, the terminal and Clau
 [Configuration](docs/configuration.md) · [How it works](docs/how-it-works.md) · [Troubleshooting](docs/troubleshooting.md)
 
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue)
-![Platform: macOS, Linux](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey)
+![Platform: macOS, Windows, Linux](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey)
 ![Node 22.18+](https://img.shields.io/badge/node-22.18%2B-green)
 ![Runtime dependencies: 0](https://img.shields.io/badge/runtime%20dependencies-0-brightgreen)
 ![100% local](https://img.shields.io/badge/100%25-local-8A63D2)
@@ -34,15 +34,15 @@ Live usage for every account in a dashboard, the menu bar, the terminal and Clau
   - a menu bar app,
   - a terminal picker,
   - Claude Code's own status line.
-- **Alerts** as macOS notifications when an account crosses 80% and 95% (you choose the levels), naming the next
+- **Alerts** as desktop notifications when an account crosses 80% and 95% (you choose the levels), naming the next
   account with room, and again when a limit resets.
 - **Move a session in one step.** `mc next` reopens the conversation in this folder on the next account with
   room, with the whole context. `mc next --fresh` starts clean there with a short handover note instead.
 - **Optional paid API-key fallback.** When Anthropic answers that a plan's limit is reached, a local relay resends
   that request on your own API key until the plan resets, up to a daily dollar cap you set.
-- **Stats** from Claude Code's session files on your Mac: what your work would have cost at API prices, per day,
+- **Stats** from Claude Code's session files on your computer: what your work would have cost at API prices, per day,
   account, model and project.
-- **Encrypted export** to move your setup to another Mac.
+- **Encrypted export** to move your setup to another computer.
 
 ### What it deliberately doesn't do
 
@@ -65,8 +65,8 @@ The screenshots use sample data (`npm run demo` serves it, so you can try the da
 
 ## Requirements
 
-- **macOS** 13 or later. Linux works for the CLI, status line and dashboard; the menu bar app and "open in
-  Terminal" buttons are macOS only.
+- **macOS 13+, Windows 10/11, or Linux.** Everything works on all three except the menu bar app, which is macOS
+  only (the dashboard does the same job). See [Windows](#windows) below.
 - **Node.js 22.18+ or 23.6+** (multiclaude runs its TypeScript directly, with no build step).
 - **Claude Code** installed and signed in (`claude --version` works).
 - One or more **Claude Pro or Max** accounts. An Anthropic API key is optional, for the fallback.
@@ -91,6 +91,25 @@ cd ~/multiclaude
    fish, between marker lines).
 
 Then **open a new terminal tab** and check everything with `mc doctor`.
+
+### Windows
+
+In PowerShell (Node.js and Claude Code installed, `git` available):
+
+```powershell
+git clone https://github.com/subh05sus/multiclaude.git $HOME\multiclaude
+node --disable-warning=ExperimentalWarning $HOME\multiclaude\src\cli.ts setup --shell
+```
+
+- `mc.cmd` goes into `%USERPROFILE%\.local\bin` (where Claude Code's own `claude.exe` lives, already on PATH).
+- The service starts at login from your Startup folder (`multiclaude.vbs`, runs hidden, no admin rights).
+- `claude` picks an account in PowerShell and Git Bash. If PowerShell says scripts are disabled, run once:
+  `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`. In plain cmd.exe, use `mc auto`.
+- Notifications are Windows toasts; Start buttons open Windows Terminal (or a console window).
+- Shared folders are directory junctions; shared files are symlinks when Developer Mode is on, hard links
+  otherwise. Neither needs admin rights.
+
+Linux: the same `./bin/mc setup --shell`; the service runs as a systemd user unit.
 
 Your existing `~/.claude` becomes the profile called **main**. Nothing in it moves.
 
@@ -148,9 +167,11 @@ Full reference, with every flag: **[docs/usage.md](docs/usage.md)**.
 
 - Everything runs on your machine. The service listens on `127.0.0.1` only and refuses requests addressed to any
   other host name, so a web page can't reach it.
-- Logins stay where Claude Code keeps them (the macOS Keychain). multiclaude reads them only to ask Anthropic for
+- Logins stay where Claude Code keeps them (the macOS Keychain, or `.credentials.json` in each profile on
+  Windows and Linux). multiclaude reads them only to ask Anthropic for
   that account's usage, and never refreshes or copies them, except into an encrypted export you ask for.
-- The API key is stored in the Keychain (item `multiclaude-api-key`).
+- The API key is stored in the Keychain on macOS (item `multiclaude-api-key`), or in `~/.multiclaude/api-key`,
+  readable only by you, on Windows and Linux.
 - Changes from the dashboard need a random token that only the dashboard page and the menu bar app can read.
 - The only network traffic is Claude Code's own requests to `api.anthropic.com`, plus the usage check
   (`/api/oauth/usage`) every few minutes for accounts with no open session.

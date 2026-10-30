@@ -12,6 +12,7 @@ import { listSessions, findSession } from './sessions.ts';
 import { writeHandover, handoverPrompt } from './handover.ts';
 import { saveApiKey, readApiKey, deleteApiKey, deleteGenericPassword, claudeKeychainService } from './keychain.ts';
 import { readJson } from './util.ts';
+import { spawnClaudeSync, claudeExecutable, stopDaemon, onPath, IS_WIN } from './platform.ts';
 
 const RESERVED = new Set([
   'claude', 'shell', 'auto', 'next', 'resume', 'handover', 'add', 'remove', 'list', 'ls', 'status', 'order', 'set', 'pick', 'fallback', 'ui',
@@ -129,7 +130,7 @@ async function cmdAdd(args: string[]): Promise<void> {
   console.log(`Set up "${name}" (shares history, settings, skills, plugins and memory with your other accounts).`);
   console.log('Now sign in with the Claude account you want here. A browser window will open.\n');
   const env = profileEnv({ ...cfg, fallback: { ...cfg.fallback, enabled: false } }, name);
-  const r = spawnSync(cfg.claudePath || 'claude', ['auth', 'login'], { stdio: 'inherit', env });
+  const r = spawnClaudeSync(claudeExecutable(cfg.claudePath), ['auth', 'login'], { stdio: 'inherit', env });
   const info = await profileInfo(name);
   if (!info.loggedIn) die(`\nNot signed in yet. Run "mc ${name} auth login" or just "mc ${name}" to try again.`);
   const dup = [...accountUuidMap(cfg.profiles.map((p) => p.name)).entries()].filter(([id, n]) => n !== name && id === info.accountUuid);
@@ -267,7 +268,7 @@ async function cmdFallback(args: string[]): Promise<void> {
     if (!/^sk-ant-[\w-]{20,}$/.test(key)) die('That does not look like an Anthropic API key.');
     if (!(await saveApiKey(key))) die('Could not save to the Keychain.');
     logActivity('settings', 'API key saved to the Keychain');
-    console.log('Saved to the Keychain (item "multiclaude-api-key").');
+    console.log(process.platform === 'darwin' ? 'Saved to the Keychain (item "multiclaude-api-key").' : 'Saved to ~/.multiclaude/api-key (readable only by you).');
   } else {
     const cfg = loadConfig();
     const s = readState();
@@ -289,7 +290,7 @@ async function cmdClaude(args: string[]): Promise<void> {
   const route = routeClaude(args);
   if (route.kind === 'pick') return cmdAuto(args);
   const cfg = loadConfig();
-  const r = spawnSync(cfg.claudePath || 'claude', args, { stdio: 'inherit' });
+  const r = spawnClaudeSync(claudeExecutable(cfg.claudePath), args, { stdio: 'inherit' });
   process.exit(r.status ?? (r.error ? 127 : 1));
 }
 
@@ -300,7 +301,10 @@ async function cmdShell(args: string[]): Promise<void> {
     const files = installShell();
     const st = shellStatus();
     console.log(files.length ? `Added the \`claude\` function to ${files.join(', ')}.` : `Already on (${st.installed.join(', ')}).`);
-    console.log('Open a new terminal tab (or run "exec $SHELL") and type claude as usual: it starts on the account mc auto would pick.');
+    console.log(IS_WIN ? 'Open a new PowerShell or Git Bash window and type claude as usual: it starts on the account mc auto would pick. (In cmd.exe, use mc auto.)' : 'Open a new terminal tab (or run "exec $SHELL") and type claude as usual: it starts on the account mc auto would pick.');
+    const { psPolicyNote } = await import('./shell.ts');
+    const note = psPolicyNote();
+    if (note) console.log(note);
     console.log('Management commands (claude mcp, claude update, claude --version, ...) still run plain. "command claude" skips multiclaude.');
   } else if (what === 'off') {
     const files = uninstallShell();
@@ -312,13 +316,16 @@ async function cmdShell(args: string[]): Promise<void> {
 }
 
 async function cmdSetup(args: string[]): Promise<void> {
-  const { installClaudeSettings, installBinLink, installDaemonAgent, installMenubar } = await import('./setup.ts');
+  const { installClaudeSettings, installBinLink, installAutostart, installMenubar } = await import('./setup.ts');
   const linkNote = installBinLink();
-  console.log(linkNote ? `• ${linkNote}` : '• mc is on your PATH (~/.local/bin/mc)');
+  console.log(linkNote ? `• ${linkNote}` : `• mc is on your PATH (~/.local/bin/${IS_WIN ? 'mc.cmd' : 'mc'})`);
   for (const c of installClaudeSettings()) console.log(`• Added to ~/.claude/settings.json: ${c} (backup saved next to it)`);
-  installDaemonAgent();
-  console.log('• Background service starts at login (LaunchAgent com.multiclaude.daemon)');
-  if (!args.includes('--no-menubar')) {
+  if (IS_WIN || process.platform !== 'darwin') {
+    const { stopDaemon } = await import('./platform.ts');
+    stopDaemon();
+  }
+  console.log(`• ${installAutostart()}`);
+  if (!args.includes('--no-menubar') && process.platform === 'darwin') {
     const err = installMenubar();
     console.log(err ? `• Menu bar app did not build:\n${err}` : '• Menu bar app installed and opens at login');
   }
@@ -340,7 +347,9 @@ async function cmdUninstall(): Promise<void> {
   for (const c of removeClaudeSettings()) console.log(`• Removed ${c} from settings.json`);
   for (const f of uninstallShell()) console.log(`• Removed the \`claude\` function from ${f}`);
   uninstallAgents();
-  console.log('• Background service and menu bar app stopped');
+  const { stopDaemon } = await import('./platform.ts');
+  stopDaemon();
+  console.log(process.platform === 'darwin' ? '• Background service and menu bar app stopped' : '• Background service stopped and removed from login');
   console.log(`Profiles and logins are still in ${MC_DIR} and the Keychain. Remove accounts with "mc remove <name>".`);
 }
 
@@ -349,10 +358,11 @@ async function cmdDoctor(): Promise<void> {
   const ok = (b: boolean, msg: string, fix = '') => console.log(`${b ? '✓' : '✗'} ${msg}${!b && fix ? `\n    → ${fix}` : ''}`);
   const [major, minor] = process.versions.node.split('.').map(Number);
   ok(major > 23 || (major === 23 && minor >= 6) || (major === 22 && minor >= 18), `Node ${process.versions.node}`, 'multiclaude needs Node 22.18+ or 23.6+ (they run TypeScript directly)');
-  const which = spawnSync('/bin/sh', ['-c', `command -v ${cfg.claudePath || 'claude'}`], { encoding: 'utf8' });
-  ok(which.status === 0, `claude found at ${which.stdout.trim() || '?'}`, 'install Claude Code or set claudePath in ~/.multiclaude/config.json');
+  const found = cfg.claudePath || onPath('claude');
+  ok(Boolean(found), `claude found at ${found ?? '?'}`, 'install Claude Code or set claudePath in ~/.multiclaude/config.json');
   ok(await daemonUp(cfg.port), `background service on port ${cfg.port}`, 'run "mc setup" (or "mc daemon" to see errors)');
-  const settings = readJson<{ statusLine?: { command?: string }; hooks?: { SessionStart?: { hooks?: { command?: string }[] }[] } }>(`${process.env.HOME}/.claude/settings.json`, {});
+  const { MAIN_CLAUDE_DIR } = await import('./paths.ts');
+  const settings = readJson<{ statusLine?: { command?: string }; hooks?: { SessionStart?: { hooks?: { command?: string }[] }[] } }>(`${MAIN_CLAUDE_DIR}/settings.json`, {});
   ok(Boolean(settings.statusLine?.command?.includes(' statusline')), 'status line installed', 'run "mc setup"');
   ok(Boolean(settings.hooks?.SessionStart?.some((g) => g.hooks?.some((h) => h.command?.includes('hook session-start')))), 'session hook installed', 'run "mc setup"');
   for (const p of cfg.profiles) {
@@ -411,8 +421,9 @@ async function main(): Promise<void> {
     case 'daemon': return (await import('./daemon.ts')).runDaemon();
     case 'start': return void console.log((await ensureDaemon()) ? 'Running.' : 'Did not start; see ~/.multiclaude/daemon.log');
     case 'stop': {
-      spawnSync('pkill', ['-f', 'src/cli.ts daemon']);
-      return void console.log('Stopped (the LaunchAgent restarts it unless you run "mc uninstall").');
+      const stopped = stopDaemon();
+      if (!stopped && !IS_WIN) spawnSync('pkill', ['-f', 'src/cli.ts daemon']);
+      return void console.log(process.platform === 'darwin' ? 'Stopped (the LaunchAgent restarts it unless you run "mc uninstall").' : 'Stopped.');
     }
     case 'statusline': return (await import('./statusline.ts')).statusline();
     case 'hook':

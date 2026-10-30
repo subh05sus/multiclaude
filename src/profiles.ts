@@ -1,7 +1,7 @@
 import {
-  existsSync, lstatSync, mkdirSync, readlinkSync, symlinkSync, copyFileSync, rmSync, cpSync, statSync, writeFileSync,
+  existsSync, lstatSync, mkdirSync, readlinkSync, symlinkSync, linkSync, copyFileSync, rmSync, rmdirSync, unlinkSync, cpSync, statSync, writeFileSync,
 } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { join, resolve, relative, isAbsolute, sep } from 'node:path';
 import { MAIN_CLAUDE_DIR, MAIN_CLAUDE_JSON, PROFILES_DIR, MAIN_PROFILE } from './paths.ts';
 import { readJson, writeJson, logActivity } from './util.ts';
 import { readClaudeCredentials } from './keychain.ts';
@@ -62,17 +62,65 @@ export function profileFromEnv(env: NodeJS.ProcessEnv = process.env): string {
   const dir = env.CLAUDE_CONFIG_DIR;
   if (!dir) return MAIN_PROFILE;
   const abs = resolve(dir);
-  if (abs === resolve(MAIN_CLAUDE_DIR)) return MAIN_PROFILE;
-  if (abs.startsWith(resolve(PROFILES_DIR) + '/')) return abs.slice(resolve(PROFILES_DIR).length + 1).split('/')[0];
+  if (samePath(abs, MAIN_CLAUDE_DIR)) return MAIN_PROFILE;
+  const rel = relative(resolve(PROFILES_DIR), abs);
+  if (rel && !rel.startsWith('..') && !isAbsolute(rel)) return rel.split(sep)[0];
   return MAIN_PROFILE;
 }
 
+const IS_WIN = process.platform === 'win32';
+
+function samePath(a: string, b: string): boolean {
+  const n = (p: string) => resolve(p).replace(/[\\/]+$/, '');
+  return IS_WIN ? n(a).toLowerCase() === n(b).toLowerCase() : n(a) === n(b);
+}
+
+/**
+ * Is `path` still connected to `target`? A symlink or Windows junction must point at it;
+ * a hard link (the Windows fallback for files) must be the same file on disk.
+ */
 function isLinkTo(path: string, target: string): boolean {
   try {
-    return lstatSync(path).isSymbolicLink() && resolve(join(path, '..'), readlinkSync(path)) === resolve(target);
+    const st = lstatSync(path);
+    if (st.isSymbolicLink()) return samePath(resolve(join(path, '..'), readlinkSync(path)), target);
+    if (!st.isFile()) return false;
+    const a = statSync(path, { bigint: true });
+    const b = statSync(target, { bigint: true });
+    return a.ino === b.ino && a.dev === b.dev && a.ino !== 0n;
   } catch {
     return false;
   }
+}
+
+/**
+ * Link a shared entry into a profile. Folders: a symlink (macOS, Linux) or a junction
+ * (Windows, no admin needed). Files: a symlink, or on Windows without Developer Mode a hard link.
+ */
+function makeLink(src: string, dst: string, isDir: boolean): void {
+  if (isDir) return symlinkSync(src, dst, IS_WIN ? 'junction' : 'dir');
+  try {
+    symlinkSync(src, dst, 'file');
+  } catch (e) {
+    if (!IS_WIN) throw e;
+    linkSync(src, dst);
+  }
+}
+
+/** Remove a link without ever touching what it points to. */
+function unlinkShared(path: string): void {
+  let st: ReturnType<typeof lstatSync>;
+  try {
+    st = lstatSync(path);
+  } catch {
+    return;
+  }
+  if (st.isSymbolicLink()) {
+    try {
+      unlinkSync(path);
+    } catch {
+      rmdirSync(path); // a Windows junction
+    }
+  } else if (st.isFile()) unlinkSync(path); // a hard link: the other name keeps the data
 }
 
 /**
@@ -112,10 +160,10 @@ export function ensureLinks(name: string): string[] {
       }
       rmSync(dst, { recursive: true, force: true });
       fixed.push(entry);
-    } else if (st?.isSymbolicLink()) {
-      rmSync(dst, { force: true });
+    } else if (st) {
+      unlinkShared(dst);
     }
-    if (existsSync(src)) symlinkSync(src, dst);
+    if (existsSync(src)) makeLink(src, dst, isDir);
   }
   if (fixed.length) logActivity('heal', `Re-linked ${fixed.join(', ')} to the shared copy`, name);
   return fixed;
@@ -227,6 +275,7 @@ export function createProfileDir(name: string): void {
 
 export function removeProfileDir(name: string): void {
   if (isMain(name)) throw new Error('The main profile is your normal ~/.claude and cannot be removed.');
-  // rmSync removes the links themselves, never what they point to.
+  // Take the shared links out first, so nothing can recurse into ~/.claude through them.
+  for (const entry of [...SHARED_DIRS, ...SHARED_FILES]) unlinkShared(join(profileDir(name), entry));
   rmSync(profileDir(name), { recursive: true, force: true });
 }

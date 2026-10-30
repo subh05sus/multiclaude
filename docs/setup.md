@@ -13,6 +13,7 @@ Everything from a fresh Mac to several accounts working, step by step.
 - [Updating](#updating)
 - [Moving the folder](#moving-the-folder)
 - [Uninstalling](#uninstalling)
+- [Windows](#windows)
 - [Linux](#linux)
 
 ## 1. Check the requirements
@@ -210,13 +211,55 @@ rm -rf ~/multiclaude  # the code
 Your main `~/.claude` and its login are never touched. History created in other profiles already lives in
 `~/.claude/projects`, so it stays.
 
+## Windows
+
+Requirements: Windows 10 or 11, [Node.js](https://nodejs.org) 22.18+ (or 23.6+), Claude Code
+(`irm https://claude.ai/install.ps1 | iex`, or npm), and git.
+
+```powershell
+git clone https://github.com/subh05sus/multiclaude.git $HOME\multiclaude
+node --disable-warning=ExperimentalWarning $HOME\multiclaude\src\cli.ts setup --shell
+```
+
+What it does on Windows:
+
+| | |
+|---|---|
+| `%USERPROFILE%\.local\bin\mc.cmd` (and `mc` for Git Bash) | Runs the CLI. Claude Code's installer already put that folder on PATH; if not, setup tells you |
+| `~/.claude/settings.json` | Status line and session hook, as `"node.exe" "...\src\cli.ts" statusline` so they work from any shell |
+| `Startup\multiclaude.vbs` | Starts the service hidden at login. No admin rights, no scheduled task |
+| PowerShell profile (`$PROFILE.CurrentUserAllHosts`, for Windows PowerShell and PowerShell 7) and `~/.bashrc` if Git Bash uses one | The `claude` function (with `--shell`) |
+
+Then, in a **new** PowerShell window:
+
+```powershell
+mc doctor
+mc add work          # signs in through your browser
+mc order work main
+claude               # starts on the account with room
+```
+
+Notes:
+
+- **Execution policy.** Windows PowerShell 5 blocks profile scripts by default. If a new window says scripts are
+  disabled, run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once.
+- **cmd.exe** has no functions; use `mc auto` (or `mc`) there.
+- **Logins** live in `.credentials.json` inside each profile folder, as Claude Code keeps them on Windows. The API
+  key goes to `~/.multiclaude/api-key`.
+- **Links.** Shared folders are directory junctions. Shared files are symlinks if Developer Mode is on, otherwise
+  hard links, which multiclaude re-links if Claude Code replaces a file. No admin rights needed either way.
+- **Start buttons** in the dashboard open Windows Terminal, or a console window if it isn't installed.
+- **No menu bar app** on Windows; the dashboard (`mc ui`) does the same job.
+- Uninstall with `mc uninstall`: it removes the Startup entry, the shell function, the status line and hook, and
+  `mc.cmd`.
+
 ## Linux
 
-The CLI, picker, status line, relay, stats and dashboard work. Differences:
+Everything works except the menu bar app:
 
-- Logins are read from `.credentials.json` in each profile folder (Claude Code's Linux storage) instead of the
-  Keychain; the API key comes from the `MC_API_KEY` environment variable.
+- Logins are read from `.credentials.json` in each profile folder, as Claude Code stores them on Linux. The API
+  key is kept in `~/.multiclaude/api-key` (mode 600), or comes from `MC_API_KEY`.
+- `mc setup` runs the service as a systemd user unit (`~/.config/systemd/user/multiclaude.service`). Without
+  systemd, start it with `mc start` after login.
 - Alerts use `notify-send`.
-- There's no menu bar app (`mc setup --no-menubar`) and no LaunchAgent: start the service with `mc start`, or a
-  systemd user unit running `node /path/to/multiclaude/src/cli.ts daemon`.
-- Dashboard buttons that open a terminal don't work; they show the command to run instead.
+- Dashboard Start buttons open `x-terminal-emulator`, GNOME Terminal, Konsole or xterm, whichever exists.

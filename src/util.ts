@@ -80,6 +80,20 @@ export function getSecret(): string {
 export function notify(title: string, body: string): void {
   if (process.env.NODE_TEST_CONTEXT || process.env.MC_NO_NOTIFY) return;
   if (process.platform === 'linux') return void execFile('notify-send', [title, body], () => {});
+  if (process.platform === 'win32') {
+    // A Windows toast through PowerShell's built-in WinRT access; text arrives as environment variables.
+    const ps = [
+      '[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] > $null',
+      '$x = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastText02)',
+      '$t = $x.GetElementsByTagName("text")',
+      '$t.Item(0).AppendChild($x.CreateTextNode($env:MC_TITLE)) > $null',
+      '$t.Item(1).AppendChild($x.CreateTextNode($env:MC_BODY)) > $null',
+      '$app = "{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\\WindowsPowerShell\\v1.0\\powershell.exe"',
+      '[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($app).Show([Windows.UI.Notifications.ToastNotification]::new($x))',
+    ].join('; ');
+    execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-Command', ps], { env: { ...process.env, MC_TITLE: title, MC_BODY: body }, windowsHide: true }, () => {});
+    return;
+  }
   if (process.platform !== 'darwin') return;
   const script = 'on run argv\ndisplay notification (item 2 of argv) with title (item 1 of argv)\nend run';
   execFile('osascript', ['-e', script, title, body], () => {});
@@ -90,15 +104,6 @@ export function shellQuote(s: string): string {
   return `'${s.replace(/'/g, `'\\''`)}'`;
 }
 
-/** Open a new Terminal window running a command. */
-export function openInTerminal(command: string, app = 'Terminal'): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const script = app === 'iTerm'
-      ? 'on run argv\ntell application "iTerm"\nactivate\ncreate window with default profile command "/bin/zsh -lc " & quoted form of (item 1 of argv)\nend tell\nend run'
-      : 'on run argv\ntell application "Terminal"\nactivate\ndo script (item 1 of argv)\nend tell\nend run';
-    execFile('osascript', ['-e', script, command], (err) => (err ? reject(err) : resolve()));
-  });
-}
 
 export function fmtPct(n: number | undefined | null): string {
   return n == null || Number.isNaN(n) ? '—' : `${Math.round(n)}%`;

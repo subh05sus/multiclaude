@@ -56,7 +56,7 @@ Most settings are in the dashboard (**Settings**) or have a command. They all li
 | `MC_HOME` | Use another folder instead of `~/.multiclaude` (handy for trying things out) |
 | `MC_BYPASS=1` | Make the `claude` shell function run plain Claude Code |
 | `MC_NO_NOTIFY=1` | No desktop notifications from this process |
-| `MC_API_KEY` | Use this API key instead of the Keychain item (Linux, CI) |
+| `MC_API_KEY` | Use this API key instead of the saved one (CI, scripts) |
 | `MC_MAIN_CLAUDE_DIR`, `MC_MAIN_CLAUDE_JSON` | Point "main" somewhere other than `~/.claude` and `~/.claude.json` (used by the tests) |
 | `MC_UPSTREAM` | Send relay traffic somewhere other than `https://api.anthropic.com` (used by the tests) |
 
@@ -86,8 +86,11 @@ multiclaude sets these for the Claude Code it starts:
 | `~/.multiclaude/handovers/*.md` | Handover notes |
 | `~/.multiclaude/daemon.log` | Service output and errors |
 | `~/.multiclaude/MultiClaude.app` | The menu bar app |
-| Keychain `Claude Code-credentials[-<hash>]` | Claude Code's own login for each profile (read only) |
-| Keychain `multiclaude-api-key` | The fallback API key |
+| Keychain `Claude Code-credentials[-<hash>]` (macOS) or `<profile>/.credentials.json` (Windows, Linux) | Claude Code's own login for each profile (read only) |
+| Keychain `multiclaude-api-key` (macOS) or `~/.multiclaude/api-key` (Windows, Linux) | The fallback API key |
+| `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\multiclaude.vbs` (Windows) | Starts the service at login |
+| `~/.config/systemd/user/multiclaude.service` (Linux) | Starts the service at login |
+| `%USERPROFILE%\.local\bin\mc.cmd` (Windows) | The `mc` command |
 
 ## What a profile shares
 

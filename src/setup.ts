@@ -4,10 +4,13 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { HOME, MAIN_CLAUDE_DIR, MC_BIN, MC_DIR, REPO_DIR, LOG_FILE } from './paths.ts';
 import { loadConfig, saveConfig } from './config.ts';
 import { logActivity } from './util.ts';
+import { IS_WIN, IS_MAC, cliCommand, fwd } from './platform.ts';
 
 const SETTINGS = () => join(MAIN_CLAUDE_DIR, 'settings.json');
-const STATUS_CMD = `${MC_BIN} statusline`;
-const HOOK_CMD = `${MC_BIN} hook session-start`;
+// Windows runs these through whatever shell Claude Code uses there, so call Node directly.
+const STATUS_CMD = IS_WIN ? cliCommand('statusline') : `${MC_BIN} statusline`;
+const HOOK_CMD = IS_WIN ? cliCommand('hook', 'session-start') : `${MC_BIN} hook session-start`;
+const LOCAL_BIN = join(HOME, '.local', 'bin');
 const AGENTS = join(HOME, 'Library', 'LaunchAgents');
 const DAEMON_LABEL = 'com.multiclaude.daemon';
 const MENUBAR_LABEL = 'com.multiclaude.menubar';
@@ -80,11 +83,22 @@ export function removeClaudeSettings(): string[] {
   return changes;
 }
 
+function onPathNow(dir: string): boolean {
+  const parts = (process.env.PATH ?? '').split(IS_WIN ? ';' : ':');
+  return parts.some((p) => (IS_WIN ? p.toLowerCase().replace(/[\\/]+$/, '') === dir.toLowerCase() : p.replace(/\/+$/, '') === dir));
+}
+
 /** Put `mc` on PATH through ~/.local/bin, where Claude Code's own launcher lives. */
 export function installBinLink(): string | null {
-  const dir = join(HOME, '.local', 'bin');
-  const link = join(dir, 'mc');
+  const dir = LOCAL_BIN;
   mkdirSync(dir, { recursive: true });
+  if (IS_WIN) {
+    // mc.cmd for cmd and PowerShell; a plain `mc` script for Git Bash.
+    writeFileSync(join(dir, 'mc.cmd'), `@echo off\r\n${cliCommand()} %*\r\n`);
+    writeFileSync(join(dir, 'mc'), `#!/bin/sh\nexec ${cliCommand()} "$@"\n`);
+    return onPathNow(dir) ? null : `Added mc to ${dir}, which isn't on your PATH yet. Add it in Settings → System → About → Advanced system settings → Environment Variables, or run mc from ${fwd(join(REPO_DIR, 'bin'))}.`;
+  }
+  const link = join(dir, 'mc');
   try {
     const st = lstatSync(link);
     if (!st.isSymbolicLink()) return `${link} already exists and isn't ours; left it alone`;
@@ -131,6 +145,39 @@ export function unloadAgent(label: string): void {
   rmSync(join(AGENTS, `${label}.plist`), { force: true });
 }
 
+const WIN_STARTUP = () => join(process.env.APPDATA ?? join(HOME, 'AppData', 'Roaming'), 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup', 'multiclaude.vbs');
+const SYSTEMD_UNIT = join(HOME, '.config', 'systemd', 'user', 'multiclaude.service');
+
+/** Keep the background service running from login: Startup folder (Windows), systemd user unit (Linux), LaunchAgent (macOS). Returns a note. */
+export function installAutostart(): string {
+  if (IS_WIN) {
+    // A tiny VBScript in the Startup folder runs the service hidden at login, no admin rights needed.
+    const cmd = cliCommand('daemon').replace(/"/g, '""');
+    mkdirSync(join(WIN_STARTUP(), '..'), { recursive: true });
+    writeFileSync(WIN_STARTUP(), `CreateObject("WScript.Shell").Run "${cmd}", 0, False\r\n`);
+    return 'Background service starts at login (Startup folder: multiclaude.vbs)';
+  }
+  if (!IS_MAC) {
+    if (spawnSync('systemctl', ['--user', '--version'], { stdio: 'ignore' }).status !== 0) return 'No systemd user session: start the service with "mc start" after login';
+    mkdirSync(join(SYSTEMD_UNIT, '..'), { recursive: true });
+    writeFileSync(SYSTEMD_UNIT, `[Unit]\nDescription=multiclaude\n\n[Service]\nExecStart=${cliCommand('daemon')}\nRestart=on-failure\n\n[Install]\nWantedBy=default.target\n`);
+    spawnSync('systemctl', ['--user', 'daemon-reload'], { stdio: 'ignore' });
+    spawnSync('systemctl', ['--user', 'enable', '--now', 'multiclaude.service'], { stdio: 'ignore' });
+    return 'Background service starts at login (systemd user unit multiclaude.service)';
+  }
+  installDaemonAgent();
+  return 'Background service starts at login (LaunchAgent com.multiclaude.daemon)';
+}
+
+export function removeAutostart(): void {
+  if (IS_WIN) return void rmSync(WIN_STARTUP(), { force: true });
+  if (!IS_MAC) {
+    spawnSync('systemctl', ['--user', 'disable', '--now', 'multiclaude.service'], { stdio: 'ignore' });
+    return void rmSync(SYSTEMD_UNIT, { force: true });
+  }
+  unloadAgent(DAEMON_LABEL);
+}
+
 /** Keep the background service running from login. */
 export function installDaemonAgent(): void {
   // Stop a copy started by hand so the agent can take the port.
@@ -140,6 +187,7 @@ export function installDaemonAgent(): void {
 
 /** Compile the Swift menu bar app and open it at login. */
 export function installMenubar(): string | null {
+  if (!IS_MAC) return 'skipped: the menu bar app is macOS only (use the dashboard: mc ui)';
   const r = spawnSync('sh', [join(REPO_DIR, 'menubar', 'build.sh'), MENUBAR_APP], { encoding: 'utf8' });
   if (r.status !== 0) return (r.stderr || r.stdout || 'build failed').trim().split('\n').slice(-5).join('\n');
   loadAgent(MENUBAR_LABEL, plist(MENUBAR_LABEL, [join(MENUBAR_APP, 'Contents', 'MacOS', 'MultiClaude')], false));
@@ -147,6 +195,10 @@ export function installMenubar(): string | null {
 }
 
 export function uninstallAgents(): void {
-  unloadAgent(MENUBAR_LABEL);
-  unloadAgent(DAEMON_LABEL);
+  if (IS_MAC) unloadAgent(MENUBAR_LABEL);
+  removeAutostart();
+  if (IS_WIN) {
+    rmSync(join(LOCAL_BIN, 'mc.cmd'), { force: true });
+    rmSync(join(LOCAL_BIN, 'mc'), { force: true });
+  }
 }

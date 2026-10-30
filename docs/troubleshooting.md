@@ -50,6 +50,16 @@ merges the newer copy back within 5 minutes or at the next launch, and logs it i
 macOS asks once whether the service may control Terminal. Allow it in System Settings → Privacy & Security →
 Automation. With iTerm, choose it in Settings → Open sessions in.
 
+**Windows: "running scripts is disabled on this system" when PowerShell starts**
+PowerShell 5's default policy blocks profile scripts, so the `claude` function can't load. Run once:
+`Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`, then open a new window. (PowerShell 7 allows it by
+default.)
+
+**Windows: shared settings.json seems to drift between accounts**
+Without Developer Mode, shared files are hard links. When Claude Code saves a file by replacing it, the link
+breaks; multiclaude notices at the next launch or within 5 minutes, keeps the newer copy and links it again.
+Turning on Developer Mode (Settings → System → For developers) lets multiclaude use real symlinks instead.
+
 **No notifications**
 They come from macOS's `osascript`, which shows up as "Script Editor". Allow its notifications in System Settings
 → Notifications. Check that alerts are on in Settings.
@@ -115,4 +125,5 @@ is on) and the usage checks to Anthropic.
 data.
 
 **Windows?**
-Not supported. Claude Code's login storage and the terminal integration differ there.
+Yes: CLI, `claude` function (PowerShell and Git Bash), dashboard, alerts, fallback, stats. There's no menu bar
+app on Windows; use the dashboard. See the [setup guide](setup.md#windows).

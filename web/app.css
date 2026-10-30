@@ -317,7 +317,6 @@ main { max-width: calc(var(--col) + 2 * var(--gutter)); margin: 0 auto; padding:
 .search { position: relative; flex: 1; min-width: 200px; max-width: 360px; }
 .search .field { width: 100%; padding-left: 34px; border-radius: 999px; }
 .search svg { position: absolute; left: 12px; top: 10px; color: var(--label-3); }
-select.field { padding-right: 28px; appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--label-2) 50%), linear-gradient(135deg, var(--label-2) 50%, transparent 50%); background-position: calc(100% - 15px) 16px, calc(100% - 10px) 16px; background-size: 5px 5px; background-repeat: no-repeat; }
 
 /* iOS switch */
 .switch { position: relative; width: 51px; height: 31px; flex: none; }
@@ -386,8 +385,38 @@ select.field { padding-right: 28px; appearance: none; background-image: linear-g
 .chips-edit .chip { height: 28px; gap: 4px; }
 .chips-edit .chip button { border: 0; background: none; color: var(--label-3); cursor: pointer; padding: 0 0 0 2px; font-size: 14px; }
 .inline-input { width: 64px; height: 28px; border-radius: 8px; text-align: center; }
-.check { display: inline-flex; gap: 8px; align-items: center; height: 28px; padding: 0 10px; border-radius: 999px; background: var(--fill-4); font-size: 13px; cursor: pointer; }
-.check input { accent-color: var(--accent); margin: 0; }
+.check { position: relative; display: inline-flex; gap: 8px; align-items: center; height: 28px; padding: 0 10px 0 8px; border-radius: 999px; background: var(--fill-4); font-size: 13px; cursor: pointer; transition: background 160ms var(--ease); }
+.check:has(input:checked) { background: rgb(10 132 255 / 0.16); }
+
+/* Our own checkbox and radio, so they look the same on macOS, Windows and Linux. */
+.check input, .radio input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; pointer-events: none; }
+.check .box { width: 16px; height: 16px; border-radius: 5px; flex: none; box-shadow: inset 0 0 0 1.5px var(--label-3); position: relative; transition: background 160ms var(--ease), box-shadow 160ms var(--ease); }
+.check input:checked + .box { background: var(--accent); box-shadow: none; }
+.check input:checked + .box::after { content: ""; position: absolute; left: 5px; top: 2px; width: 4px; height: 8px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); animation: pop 160ms var(--ease) both; }
+.check input:focus-visible + .box, .radio input:focus-visible + .dot { outline: 2px solid var(--ring); outline-offset: 2px; }
+.radio .dot { width: 16px; height: 16px; border-radius: 50%; flex: none; margin-top: 2px; box-shadow: inset 0 0 0 1.5px var(--label-3); position: relative; transition: box-shadow 160ms var(--ease), background 160ms var(--ease); }
+.radio input:checked + .dot { background: var(--accent); box-shadow: none; }
+.radio input:checked + .dot::after { content: ""; position: absolute; inset: 5px; border-radius: 50%; background: #fff; animation: pop 160ms var(--ease) both; }
+
+/* Select: a button and a popover list instead of the native dropdown. */
+.select-btn {
+  height: 34px; padding: 0 10px 0 14px; border: 0; border-radius: 10px; background: var(--fill-4); color: var(--label);
+  display: inline-flex; align-items: center; gap: 10px; cursor: pointer; font-size: 14px; min-width: 120px; justify-content: space-between;
+  transition: background 140ms var(--ease), transform 120ms var(--ease);
+}
+.select-btn:hover { background: var(--fill-3); }
+.select-btn:active { transform: scale(0.98); }
+.select-btn svg { color: var(--label-2); flex: none; }
+.select-btn[aria-expanded="true"] { box-shadow: 0 0 0 2px var(--ring); }
+.select-menu button { gap: 8px; }
+.select-menu .tick { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; visibility: hidden; flex: none; }
+.select-menu [aria-selected="true"] .tick { visibility: visible; }
+
+/* Slim dark scrollbars everywhere (Windows otherwise draws wide grey ones). */
+* { scrollbar-width: thin; scrollbar-color: var(--fill) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--fill); border-radius: 999px; border: 3px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-track { background: transparent; }
 .notice { padding: 12px 16px; border-radius: var(--r-inner); background: var(--fill-4); color: var(--label-2); font-size: 13px; line-height: 18px; margin-top: 10px; }
 
 /* ------------------------------------------------------------------ toasts, tooltip */
@@ -518,8 +547,7 @@ code { font: 12.5px var(--mono); background: var(--fill-4); padding: 1px 6px; bo
 .panel-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .panel-actions .grow { flex: 1; }
 .panel-inner .note-preview { border-radius: 10px; background: var(--cell); }
-.radio { display: flex; gap: 8px; align-items: flex-start; padding: 8px 12px; border-radius: 10px; background: var(--fill-4); cursor: pointer; font-size: 13.5px; flex: 1; min-width: 220px; }
-.radio input { accent-color: var(--accent); margin-top: 3px; }
+.radio { position: relative; display: flex; gap: 10px; align-items: flex-start; padding: 8px 12px; border-radius: 10px; background: var(--fill-4); cursor: pointer; font-size: 13.5px; flex: 1; min-width: 220px; }
 .radio:has(input:checked) { background: rgb(10 132 255 / 0.16); }
 
 /* Pages rise once per visit; the chart draws in once. */

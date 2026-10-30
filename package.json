@@ -1,6 +1,6 @@
 {
   "name": "multiclaude",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Run several Claude accounts side by side in Claude Code: shared history, live usage, alerts, and a paid API-key fallback.",
   "type": "module",
   "license": "MIT",
@@ -12,7 +12,7 @@
   },
   "scripts": {
     "check": "tsc --noEmit -p .",
-    "test": "node --disable-warning=ExperimentalWarning --test test/*.test.ts",
+    "test": "node --disable-warning=ExperimentalWarning --test \"test/*.test.ts\"",
     "menubar": "sh menubar/build.sh",
     "lint": "node scripts/design-guard.mjs",
     "demo": "node scripts/demo-server.mjs"

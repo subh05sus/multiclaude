@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.0 — 2026-10-30
+
+- **Windows support:** `mc.cmd`, start at login from the Startup folder, `claude` function in PowerShell and Git
+  Bash, Windows toasts, Windows Terminal launch, junctions and symlink/hard-link file sharing with self-repair,
+  logins from `.credentials.json`, API key in a private file. CI runs on Windows too.
+- Linux: the service runs as a systemd user unit; Start buttons open the desktop's terminal.
+- Dashboard: custom dropdown, checkboxes and radio buttons (no native controls, same look on every OS), slim dark
+  scrollbars; the Terminal/iTerm choice shows only on macOS.
+
 ## 0.1.1 — 2026-10-30
 
 - Status line readings from a session started on an older login are filed under the account they belong to

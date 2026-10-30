@@ -221,7 +221,7 @@ function allTranscripts(): string[] {
 
 function sessionIdFor(file: string): string {
   // Subagent transcripts live in <project>/<session-id>/subagents/agent-*.jsonl.
-  const m = /\/([0-9a-f-]{36})\/subagents\//.exec(file);
+  const m = /[\\/]([0-9a-f-]{36})[\\/]subagents[\\/]/.exec(file);
   return m ? m[1] : basename(file, '.jsonl');
 }
 

@@ -1,5 +1,7 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync, copyFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { IS_WIN, mcLauncher, fwd } from './platform.ts';
 import { HOME, MC_BIN } from './paths.ts';
 import { logActivity } from './util.ts';
 
@@ -14,7 +16,7 @@ const END = '# <<< multiclaude <<<';
 
 function posixBlock(): string {
   return `${START}
-claude() { "${MC_BIN}" claude "$@"; }
+claude() { "${fwd(MC_BIN)}" claude "$@"; }
 ${END}`;
 }
 
@@ -28,10 +30,44 @@ ${END}
 `;
 }
 
+function psBlock(): string {
+  return `${START}
+function claude { & "${mcLauncher()}" claude @args }
+${END}`;
+}
+
+/** PowerShell profile files (Windows PowerShell 5 and PowerShell 7), for all hosts of the current user. */
+function psProfiles(): string[] {
+  if (process.env.MC_PS_PROFILES !== undefined) return process.env.MC_PS_PROFILES.split(';').filter(Boolean);
+  if (!IS_WIN) return [];
+  const out: string[] = [];
+  for (const exe of ['powershell.exe', 'pwsh.exe']) {
+    const r = spawnSync(exe, ['-NoProfile', '-NonInteractive', '-Command', '$PROFILE.CurrentUserAllHosts'], { encoding: 'utf8', windowsHide: true });
+    const path = (r.stdout ?? '').trim();
+    if (r.status === 0 && path) out.push(path);
+  }
+  return out;
+}
+
+/** PowerShell 5 refuses to run profile scripts under the default "Restricted" policy. */
+export function psPolicyNote(): string | null {
+  if (!IS_WIN) return null;
+  const r = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', 'Get-ExecutionPolicy'], { encoding: 'utf8', windowsHide: true });
+  const policy = (r.stdout ?? '').trim();
+  return /Restricted|AllSigned/i.test(policy)
+    ? `PowerShell's execution policy is ${policy}, so it won't load the function. Run once: Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`
+    : null;
+}
+
 /** Startup files for the user's shell (and zsh/bash ones that already exist). */
 function rcFiles(): string[] {
   const shell = process.env.SHELL ?? '';
   const files = new Set<string>();
+  if (IS_WIN) {
+    // Git Bash reads ~/.bashrc; only touch it when it exists.
+    if (existsSync(join(HOME, '.bashrc'))) files.add(join(HOME, '.bashrc'));
+    return [...files];
+  }
   if (shell.endsWith('zsh') || existsSync(join(HOME, '.zshrc'))) files.add(join(HOME, '.zshrc'));
   if (shell.endsWith('bash') || existsSync(join(HOME, '.bashrc'))) files.add(join(HOME, '.bashrc'));
   // macOS Terminal opens bash as a login shell, which reads .bash_profile, not .bashrc.
@@ -41,7 +77,7 @@ function rcFiles(): string[] {
 
 function strip(text: string): string {
   const re = new RegExp(`\\n?${START.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[\\s\\S]*?${END.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\n?`, 'g');
-  return text.replace(re, '\n');
+  return text.replace(/\r\n/g, '\n').replace(re, '\n');
 }
 
 export interface ShellStatus {
@@ -50,7 +86,7 @@ export interface ShellStatus {
 }
 
 export function shellStatus(): ShellStatus {
-  const installed = rcFiles().filter((f) => existsSync(f) && readFileSync(f, 'utf8').includes(START));
+  const installed = [...rcFiles(), ...psProfiles()].filter((f) => existsSync(f) && readFileSync(f, 'utf8').includes(START));
   if (existsSync(FISH_FILE) && readFileSync(FISH_FILE, 'utf8').includes(START)) installed.push(FISH_FILE);
   return { installed, shell: process.env.SHELL ?? 'unknown' };
 }
@@ -65,7 +101,16 @@ export function installShell(): string[] {
     writeFileSync(f, next);
     done.push(f);
   }
-  if ((process.env.SHELL ?? '').endsWith('fish') || existsSync(join(HOME, '.config', 'fish'))) {
+  for (const f of psProfiles()) {
+    const before = existsSync(f) ? readFileSync(f, 'utf8') : '';
+    const next = `${strip(before).replace(/\n*$/, '\n')}\n${psBlock()}\n`.replace(/^\n+/, '');
+    if (next === before) continue;
+    mkdirSync(dirname(f), { recursive: true });
+    if (before) copyFileSync(f, `${f}.mc-backup`);
+    writeFileSync(f, next);
+    done.push(f);
+  }
+  if (!IS_WIN && ((process.env.SHELL ?? '').endsWith('fish') || existsSync(join(HOME, '.config', 'fish')))) {
     mkdirSync(join(HOME, '.config', 'fish', 'functions'), { recursive: true });
     if (!existsSync(FISH_FILE) || readFileSync(FISH_FILE, 'utf8').includes(START)) {
       writeFileSync(FISH_FILE, fishBody());
@@ -78,7 +123,7 @@ export function installShell(): string[] {
 
 export function uninstallShell(): string[] {
   const done: string[] = [];
-  for (const f of rcFiles()) {
+  for (const f of [...rcFiles(), ...psProfiles()]) {
     if (!existsSync(f)) continue;
     const before = readFileSync(f, 'utf8');
     if (!before.includes(START)) continue;

@@ -68,7 +68,9 @@ export async function statusline(): Promise<void> {
 
   const out: string[] = [];
   if (cfg.statuslineWrap) {
-    const r = spawnSync('/bin/sh', ['-c', cfg.statuslineWrap], { input: raw, encoding: 'utf8', timeout: 3000 });
+    const r = process.platform === 'win32'
+      ? spawnSync(cfg.statuslineWrap, { input: raw, encoding: 'utf8', timeout: 3000, shell: true })
+      : spawnSync('/bin/sh', ['-c', cfg.statuslineWrap], { input: raw, encoding: 'utf8', timeout: 3000 });
     const prev = (r.stdout ?? '').trim();
     if (prev) out.push(prev);
   }

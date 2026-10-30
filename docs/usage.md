@@ -66,13 +66,17 @@ mc shell off
 ```
 
 This adds a small function to your shell's startup file (`~/.zshrc`, `~/.bashrc`, `~/.bash_profile` on macOS
-bash, or `~/.config/fish/functions/claude.fish`), between marker lines:
+bash, `~/.config/fish/functions/claude.fish`, or on Windows your PowerShell profile and Git Bash's `~/.bashrc`),
+between marker lines:
 
 ```sh
 # >>> multiclaude: `claude` picks an account (remove with: mc shell off) >>>
 claude() { "/path/to/multiclaude/bin/mc" claude "$@"; }
 # <<< multiclaude <<<
 ```
+
+On Windows, PowerShell gets `function claude { & "...\mc.cmd" claude @args }`. cmd.exe has no functions; use
+`mc auto` there.
 
 Open a new tab afterwards. Then `claude`, `claude -p "…"`, `claude --resume` and `claude "fix the bug"` all
 start on the picked account.
@@ -177,6 +181,8 @@ Anthropic right away.
 Every change saves right away and shows **Saved ✓** beside the control.
 
 ## The menu bar app
+
+macOS only. On Windows and Linux the dashboard covers the same ground.
 
 The icon shows the account a new session would go to and its usage, like `◐ personal 38%`. The menu lists:
 

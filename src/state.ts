@@ -20,6 +20,7 @@ export interface ProfileState {
 
 export interface AppState {
   version: string;
+  platform: NodeJS.Platform;
   updatedAt: number;
   port: number;
   pickMode: PickMode;

@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { spawnClaude, claudeExecutable } from './platform.ts';
 import { openSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { fallbackAllowed, loadConfig, type Config } from './config.ts';
@@ -22,6 +23,7 @@ export async function ensureDaemon(cfg: Config = loadConfig()): Promise<boolean>
   const log = openSync(LOG_FILE, 'a');
   const child = spawn(process.execPath, ['--disable-warning=ExperimentalWarning', join(REPO_DIR, 'src', 'cli.ts'), 'daemon'], {
     detached: true,
+    windowsHide: true,
     stdio: ['ignore', log, log],
   });
   child.unref();
@@ -93,7 +95,7 @@ export async function launch(profile: string, args: string[], opts: LaunchOption
   }
   logActivity('launch', `Started Claude Code${args.length ? ` (${args.join(' ').slice(0, 80)})` : ''}`, profile);
 
-  const child = spawn(cfg.claudePath || 'claude', args, { stdio: 'inherit', env });
+  const child = spawnClaude(claudeExecutable(cfg.claudePath), args, { stdio: 'inherit', env });
   // Ctrl-C reaches Claude directly; this wrapper just waits.
   const ignore = () => {};
   process.on('SIGINT', ignore);

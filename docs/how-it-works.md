@@ -21,15 +21,17 @@
 ## Profiles
 
 Claude Code reads its configuration from `~/.claude` and `~/.claude.json`, or from the folder in
-`CLAUDE_CONFIG_DIR`. Its login is stored in the macOS Keychain under a name derived from that folder:
+`CLAUDE_CONFIG_DIR`. On macOS its login is stored in the Keychain under a name derived from that folder:
 `Claude Code-credentials` for the default, `Claude Code-credentials-<first 8 hex of sha256(folder)>` otherwise.
-So two folders mean two independent logins.
+On Windows and Linux it's `.credentials.json` inside the folder. Either way, two folders mean two independent
+logins.
 
 A multiclaude profile is such a folder, `~/.multiclaude/profiles/<name>`, containing:
 
 - its own `.claude.json` (account, onboarding, per-project state), seeded and kept in step from `~/.claude.json`
   at each launch;
-- symbolic links to the shared entries in `~/.claude` (the list is in
+- links to the shared entries in `~/.claude`: symbolic links on macOS and Linux; on Windows, directory junctions
+  for folders and symlinks (Developer Mode) or hard links for files, none of which need admin rights (the list is in
   [configuration.md](configuration.md#what-a-profile-shares)).
 
 Claude Code sometimes saves a file by writing a temporary file and renaming it over the original, which replaces

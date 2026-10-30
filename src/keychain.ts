@@ -2,6 +2,8 @@ import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { writeFileSync, rmSync, mkdirSync, chmodSync } from 'node:fs';
+import { MC_DIR } from './paths.ts';
 import { createHash } from 'node:crypto';
 import { userInfo } from 'node:os';
 
@@ -97,14 +99,34 @@ export async function writeClaudeCredentials(configDir: string | null, creds: Cl
 /** The API key used for the paid fallback lives in its own Keychain item. */
 export const API_KEY_SERVICE = 'multiclaude-api-key';
 
-/** MC_API_KEY, when set, takes the place of the Keychain item (handy for tests and CI). */
+/**
+ * macOS: the Keychain. Windows and Linux: ~/.multiclaude/api-key, readable only by you
+ * (the same way Claude Code keeps its own login on those systems).
+ * MC_API_KEY, when set, takes the place of either (handy for tests and CI).
+ */
+const API_KEY_FILE = join(MC_DIR, 'api-key');
+
 export function readApiKey(): Promise<string | null> {
   if (process.env.MC_API_KEY) return Promise.resolve(process.env.MC_API_KEY);
+  if (process.platform !== 'darwin') {
+    try {
+      return Promise.resolve(readFileSync(API_KEY_FILE, 'utf8').trim() || null);
+    } catch {
+      return Promise.resolve(null);
+    }
+  }
   return readGenericPassword(API_KEY_SERVICE);
 }
-export function saveApiKey(key: string): Promise<boolean> {
+export async function saveApiKey(key: string): Promise<boolean> {
+  if (process.platform !== 'darwin') {
+    mkdirSync(MC_DIR, { recursive: true, mode: 0o700 });
+    writeFileSync(API_KEY_FILE, key + '\n', { mode: 0o600 });
+    try { chmodSync(API_KEY_FILE, 0o600); } catch { /* Windows: the user folder is private already */ }
+    return true;
+  }
   return writeGenericPassword(API_KEY_SERVICE, key);
 }
-export function deleteApiKey(): Promise<void> {
+export async function deleteApiKey(): Promise<void> {
+  if (process.platform !== 'darwin') return void rmSync(API_KEY_FILE, { force: true });
   return deleteGenericPassword(API_KEY_SERVICE);
 }

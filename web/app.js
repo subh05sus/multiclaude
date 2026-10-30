@@ -184,6 +184,54 @@ function selectSeg(seg, value) {
   placeThumb(seg);
 }
 
+// ------------------------------------------------------------------ select (no native dropdown)
+
+/** A button that opens a small list in the same popover as the account menus. Looks the same on every OS. */
+function selectHtml(name, options, value, label) {
+  const current = options.find(([v]) => String(v) === String(value)) ?? options[0];
+  return html`<button type="button" class="select-btn" data-select="${name}" data-value="${current?.[0] ?? ''}" aria-haspopup="listbox" aria-expanded="false" aria-label="${label}">
+    <span class="select-label">${current?.[1] ?? ''}</span>
+    <svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><path d="M3 4.5l3-3 3 3M3 7.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>`;
+}
+const selectOptions = new Map();
+
+function openSelect(btn) {
+  closeMenus();
+  const name = btn.dataset.select;
+  const options = selectOptions.get(name) ?? [];
+  const menu = document.createElement('div');
+  menu.className = 'menu select-menu';
+  menu.setAttribute('role', 'listbox');
+  menu.setAttribute('aria-label', btn.getAttribute('aria-label'));
+  menu.style.minWidth = `${Math.max(160, btn.offsetWidth)}px`;
+  menu.innerHTML = options.map(([v, l]) => html`<button role="option" type="button" data-opt="${v}" aria-selected="${String(v) === btn.dataset.value}">
+    <svg class="tick" viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7"/></svg><span>${l}</span></button>`.s).join('');
+  document.body.appendChild(menu);
+  menu.anchor = btn;
+  placeMenu(menu);
+  btn.setAttribute('aria-expanded', 'true');
+  (menu.querySelector('[aria-selected="true"]') ?? menu.querySelector('button'))?.focus();
+  menu.addEventListener('click', (e) => {
+    const o = e.target.closest('[data-opt]');
+    if (!o) return;
+    const v = o.dataset.opt;
+    closeMenus();
+    btn.focus();
+    if (v === btn.dataset.value) return;
+    btn.dataset.value = v;
+    btn.querySelector('.select-label').textContent = o.textContent.trim();
+    if (name === 'defaultProfile') patchConfig({ defaultProfile: v }, slotNear(btn));
+  });
+  menu.addEventListener('keydown', (e) => {
+    const items = [...menu.querySelectorAll('[data-opt]')];
+    const i = items.indexOf(document.activeElement);
+    if (e.key === 'ArrowDown') { e.preventDefault(); items[(i + 1) % items.length]?.focus(); }
+    if (e.key === 'ArrowUp') { e.preventDefault(); items[(i - 1 + items.length) % items.length]?.focus(); }
+    if (e.key === 'Tab') closeMenus();
+  });
+}
+
 // ------------------------------------------------------------------ app state
 
 let state = null;
@@ -606,8 +654,8 @@ async function fillPanel(panel, s) {
     ${facts ? html`<div class="muted small">${facts} · last run on ${s.profile}</div>` : ''}
     <div class="panel-row"><span class="ctl-label">Continue on</span>${segHtml('to', others.map((p) => [p.name, p.name]), suggested)}</div>
     <div class="panel-row" role="radiogroup" aria-label="How to continue">
-      <label class="radio"><input type="radio" name="how-${s.id}" value="resume" checked> <span><b>Same chat</b> <span class="muted">the whole conversation carries over</span></span></label>
-      <label class="radio"><input type="radio" name="how-${s.id}" value="handover"> <span><b>Fresh, with a note</b> <span class="muted">a short summary instead of the full context</span></span></label>
+      <label class="radio"><input type="radio" name="how-${s.id}" value="resume" checked><span class="dot" aria-hidden="true"></span><span><b>Same chat</b> <span class="muted">the whole conversation carries over</span></span></label>
+      <label class="radio"><input type="radio" name="how-${s.id}" value="handover"><span class="dot" aria-hidden="true"></span><span><b>Fresh, with a note</b> <span class="muted">a short summary instead of the full context</span></span></label>
     </div>
     <div class="panel-actions">
       <button class="btn btn-plain" type="button" data-preview>Preview note</button>
@@ -841,6 +889,7 @@ function renderSettings() {
   const s = state;
   const f = s.fallback;
   const active = s.profiles.filter((p) => p.fallback.active);
+  selectOptions.set('defaultProfile', s.profiles.map((p) => [p.name, p.name]));
   $('#page-settings').innerHTML = html`
     <div class="page-head"><div class="grow"><h1 id="h-settings">Settings</h1><p>Saved as you change them.</p></div></div>
     <div class="settings-grid">
@@ -849,13 +898,13 @@ function renderSettings() {
         <div class="group">
           <div class="row set-row"><div class="grow"><div class="row-title">How "Start" picks</div><div class="row-sub">Also used by <code>mc auto</code> and <code>mc next</code>.</div></div><div class="ctl">${segHtml('pick', [['priority', 'First with room'], ['most-room', 'Most room']], s.pickMode)}<span class="saved-slot"></span></div></div>
           <div class="row set-row"><div class="grow"><div class="row-title">Switch at</div><div class="row-sub">An account counts as full past this share of its 5-hour or weekly limit. Each account can override it.</div></div><div class="ctl"><div class="stepper" data-stepper="switchAt"><button type="button" aria-label="Lower">−</button><output class="tnum">${s.switchAt}%</output><button type="button" aria-label="Raise">+</button></div><span class="saved-slot"></span></div></div>
-          <div class="row set-row"><div class="grow"><div class="row-title">When nothing has room</div><div class="row-sub">Start on this account anyway.</div></div><div class="ctl"><select class="field" data-sel="defaultProfile" aria-label="Default account">${s.profiles.map((p) => html`<option ${p.name === s.defaultProfile ? raw('selected') : ''}>${p.name}</option>`)}</select><span class="saved-slot"></span></div></div>
-          <div class="row set-row"><div class="grow"><div class="row-title">Open sessions in</div></div><div class="ctl">${segHtml('terminalApp', [['Terminal', 'Terminal'], ['iTerm', 'iTerm']], s.terminalApp)}<span class="saved-slot"></span></div></div>
+          <div class="row set-row"><div class="grow"><div class="row-title">When nothing has room</div><div class="row-sub">Start on this account anyway.</div></div><div class="ctl">${selectHtml('defaultProfile', s.profiles.map((p) => [p.name, p.name]), s.defaultProfile, 'Account to use when nothing has room')}<span class="saved-slot"></span></div></div>
+          ${s.platform === 'darwin' ? html`<div class="row set-row"><div class="grow"><div class="row-title">Open sessions in</div></div><div class="ctl">${segHtml('terminalApp', [['Terminal', 'Terminal'], ['iTerm', 'iTerm']], s.terminalApp)}<span class="saved-slot"></span></div></div>` : ''}
         </div>
 
         <div class="section-title">Usage alerts</div>
         <div class="group">
-          <div class="row set-row"><div class="grow"><div class="row-title">Notify me</div><div class="row-sub">A Mac notification when an account crosses a level, naming the next account with room.</div></div><div class="ctl">${sw('alerts.enabled', s.alerts.enabled, 'Usage alerts')}<span class="saved-slot"></span></div></div>
+          <div class="row set-row"><div class="grow"><div class="row-title">Notify me</div><div class="row-sub">A desktop notification when an account crosses a level, naming the next account with room.</div></div><div class="ctl">${sw('alerts.enabled', s.alerts.enabled, 'Usage alerts')}<span class="saved-slot"></span></div></div>
           <div class="row set-row"><div class="grow"><div class="row-title">Levels</div></div><div class="ctl chips-edit" id="levels">${s.alerts.thresholds.map((t) => html`<span class="chip">${t}%<button type="button" data-rm-level="${t}" aria-label="Remove ${t}%">×</button></span>`)}<input class="field inline-input" id="add-level" inputmode="numeric" placeholder="+ %" aria-label="Add a level"><span class="saved-slot"></span></div></div>
           <div class="row set-row"><div class="grow"><div class="row-title">Tell me when a limit resets</div></div><div class="ctl">${sw('alerts.notifyReset', s.alerts.notifyReset, 'Reset notifications')}<span class="saved-slot"></span></div></div>
           <div class="row set-row"><div class="grow"><div class="row-title">Check usage every</div><div class="row-sub">For accounts with no open session. Open sessions report on their own.</div></div><div class="ctl"><div class="stepper" data-stepper="pollMinutes"><button type="button" aria-label="Less often">−</button><output class="tnum">${s.pollMinutes} min</output><button type="button" aria-label="More often">+</button></div><span class="saved-slot"></span></div></div>
@@ -866,10 +915,10 @@ function renderSettings() {
         <div class="section-title">API key fallback</div>
         <div class="group">
           <div class="row set-row"><div class="grow"><div class="row-title">Keep sessions going on my API key</div><div class="row-sub">Only when Anthropic says a plan's limit is reached, until it resets. Pay as you go.</div></div><div class="ctl">${sw('fallback.enabled', f.enabled, 'API key fallback')}<span class="saved-slot"></span></div></div>
-          <div class="row set-row"><div class="grow"><div class="row-title">API key</div><div class="row-sub">${f.hasKey ? 'Saved in your Keychain.' : 'Paste a key from console.anthropic.com. It goes straight to your Keychain.'}</div></div>
+          <div class="row set-row"><div class="grow"><div class="row-title">API key</div><div class="row-sub">${f.hasKey ? 'Saved on this computer only.' : 'Paste a key from console.anthropic.com. It is stored only on this computer.'}</div></div>
             <div class="ctl">${f.hasKey ? html`<span class="status ok">Saved</span><button class="btn btn-small" type="button" data-act="key-remove">Remove</button>` : html`<input class="field" type="password" id="api-key" placeholder="sk-ant-…" aria-label="API key" style="width:180px"><button class="btn btn-small" type="button" data-act="key-save">Save</button>`}</div></div>
           <div class="row set-row"><div class="grow"><div class="row-title">Daily spending cap</div><div class="row-sub">${money(f.spentToday)} used today. Past the cap, requests go back to the plan's normal limit message.</div></div><div class="ctl"><span class="muted">$</span><input class="field inline-input" data-num="fallback.dailyCapUsd" inputmode="decimal" value="${f.dailyCapUsd}" aria-label="Daily cap in dollars"><span class="saved-slot"></span></div></div>
-          <div class="row set-row"><div class="grow"><div class="row-title">Accounts that may use it</div><div class="row-sub">None ticked means all of them.</div></div><div class="ctl chips-edit">${s.profiles.map((p) => html`<label class="check"><input type="checkbox" data-fb-profile="${p.name}" ${f.profiles.includes(p.name) ? raw('checked') : ''}>${p.name}</label>`)}<span class="saved-slot"></span></div></div>
+          <div class="row set-row"><div class="grow"><div class="row-title">Accounts that may use it</div><div class="row-sub">None ticked means all of them.</div></div><div class="ctl chips-edit">${s.profiles.map((p) => html`<label class="check"><input type="checkbox" data-fb-profile="${p.name}" ${f.profiles.includes(p.name) ? raw('checked') : ''}><span class="box" aria-hidden="true"></span>${p.name}</label>`)}<span class="saved-slot"></span></div></div>
           <div class="row set-row"><div class="grow"><div class="row-title">Keep every Claude Code feature on</div><div class="row-sub">Tells Claude Code the relay is Anthropic's API (it forwards there unchanged), so features that need a direct connection stay on. Uses an internal Claude Code setting that may change.</div></div><div class="ctl">${sw('fallback.assumeFirstParty', f.assumeFirstParty, 'Keep features on')}<span class="saved-slot"></span></div></div>
           ${active.length ? html`<div class="row"><div class="grow"><div class="row-title">On the API key now</div><div class="row-sub">${active.map((p) => `${p.name} until ${new Date(p.fallback.until).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`).join(' · ')}</div></div>${active.map((p) => html`<button class="btn btn-small" type="button" data-act="fb-clear" data-name="${p.name}">Back to plan: ${p.name}</button>`)}</div>` : ''}
         </div>
@@ -878,7 +927,7 @@ function renderSettings() {
 
         <div class="section-title">About</div>
         <div class="group">
-          <div class="row"><div class="grow"><div class="row-title">multiclaude ${s.version}</div><div class="row-sub">Running on 127.0.0.1:${s.port}. Nothing leaves this Mac except Claude Code's own requests to Anthropic.</div></div></div>
+          <div class="row"><div class="grow"><div class="row-title">multiclaude ${s.version}</div><div class="row-sub">Running on 127.0.0.1:${s.port}. Nothing leaves this computer except Claude Code's own requests to Anthropic.</div></div></div>
           <div class="row"><div class="grow"><div class="row-sub"><code>mc</code> picker · <code>mc auto</code> · <code>mc next</code> · <code>mc list</code> · <code>mc doctor</code></div></div></div>
         </div>
       </div>
@@ -925,7 +974,9 @@ function show(next) {
 
 document.addEventListener('click', async (e) => {
   const t = e.target;
-  if (!t.closest('.menu') && !t.closest('[data-act="menu"]')) closeMenus();
+  if (!t.closest('.menu') && !t.closest('[data-act="menu"]') && !t.closest('[data-select]')) closeMenus();
+  const sel = t.closest('[data-select]');
+  if (sel) return sel.getAttribute('aria-expanded') === 'true' ? closeMenus() : openSelect(sel);
 
   const act = t.closest('[data-act]');
   if (act) {
@@ -936,7 +987,7 @@ document.addEventListener('click', async (e) => {
     if (a === 'start-auto') return busy(act, () => post('/api/launch', { profile: 'auto' })).then(() => toast(`Opened Terminal on ${state.pick.name}`)).catch(() => {});
     if (a === 'key-save') {
       const key = $('#api-key').value.trim();
-      return busy(act, () => post('/api/apikey', { key })).then((s) => { setState(s); renderSettings(); toast('API key saved to your Keychain'); }).catch(() => {});
+      return busy(act, () => post('/api/apikey', { key })).then((s) => { setState(s); renderSettings(); toast('API key saved'); }).catch(() => {});
     }
     if (a === 'key-remove') return busy(act, () => post('/api/apikey', { remove: true })).then((s) => { setState(s); renderSettings(); }).catch(() => {});
     if (a === 'fb-clear') return busy(act, () => post('/api/fallback/clear', { profile: act.dataset.name })).then((s) => { setState(s); renderSettings(); }).catch(() => {});
@@ -1001,7 +1052,6 @@ document.addEventListener('change', (e) => {
     const [group, key] = t.dataset.sw.split('.');
     return patchConfig({ [group]: { [key]: t.checked } }, slotNear(t));
   }
-  if (t.dataset.sel === 'defaultProfile') return patchConfig({ defaultProfile: t.value }, slotNear(t));
   if (t.dataset.num === 'fallback.dailyCapUsd') {
     const n = Number(t.value);
     if (!(n >= 0)) return toast('Enter a dollar amount, like 5', 'err');

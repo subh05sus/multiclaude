@@ -3,7 +3,8 @@ import { readFileSync, existsSync, writeFileSync, mkdirSync, watch } from 'node:
 import { join, extname } from 'node:path';
 import { loadConfig, saveConfig, type Config } from './config.ts';
 import { MC_DIR, WEB_DIR, STATE_FILE, ACTIVITY_FILE, MAIN_PROFILE, LIVE_USAGE_DIR, MC_BIN } from './paths.ts';
-import { getSecret, writeJson, readJsonLines, logActivity, openInTerminal, shellQuote, isValidProfileName, type Activity } from './util.ts';
+import { getSecret, writeJson, readJsonLines, logActivity, shellQuote, isValidProfileName, type Activity } from './util.ts';
+import { openInTerminal, IS_WIN, cmdQuote, mcLauncher } from './platform.ts';
 import { profileInfo, ensureLinks, accountUuidMap, removeProfileDir, isMain, configDirEnv, type ProfileInfo } from './profiles.ts';
 import { fetchUsage, readLiveUsage, mergeUsage, peakPct, writeLiveUsage, writeApiUsage, ownerOf, type Usage } from './usage.ts';
 import { pickAccount, reorder, switchAtFor } from './pick.ts';
@@ -15,7 +16,7 @@ import { listSessions, statsReport, refreshStats } from './sessions.ts';
 import { buildHandover, handoverMarkdown } from './handover.ts';
 import type { AppState, ProfileState } from './state.ts';
 
-const VERSION = '0.1.1';
+const VERSION = '0.2.0';
 
 const apiUsage = new Map<string, Usage>();
 const infoCache = new Map<string, { at: number; info: ProfileInfo }>();
@@ -55,6 +56,7 @@ async function buildState(cfg: Config): Promise<AppState> {
   const pick = pickAccount(cfg, profiles.map((p) => ({ name: p.name, loggedIn: p.info.loggedIn, usage: p.usage })));
   return {
     version: VERSION,
+    platform: process.platform,
     updatedAt: Date.now(),
     port: cfg.port,
     pickMode: cfg.pick,
@@ -168,13 +170,14 @@ function serveStatic(res: ServerResponse, file: string, secret: string): void {
 type Body = Record<string, unknown>;
 
 function launchCommand(profile: string, opts: { cwd?: string; sessionId?: string; mode?: string }): string {
+  const q = IS_WIN ? cmdQuote : shellQuote;
   const parts: string[] = [];
-  if (opts.cwd && existsSync(opts.cwd)) parts.push(`cd ${shellQuote(opts.cwd)} &&`);
-  parts.push(shellQuote(MC_BIN));
-  if (opts.mode === 'handover' && opts.sessionId) parts.push('handover', shellQuote(opts.sessionId), '--to', shellQuote(profile));
-  else if (opts.mode === 'resume' && opts.sessionId) parts.push('resume', shellQuote(profile), shellQuote(opts.sessionId));
-  else if (opts.mode === 'login') parts.push(shellQuote(profile), 'auth', 'login');
-  else parts.push(shellQuote(profile));
+  if (opts.cwd && existsSync(opts.cwd)) parts.push(IS_WIN ? `cd /d ${q(opts.cwd)} &&` : `cd ${q(opts.cwd)} &&`);
+  parts.push(q(IS_WIN ? mcLauncher() : MC_BIN));
+  if (opts.mode === 'handover' && opts.sessionId) parts.push('handover', q(opts.sessionId), '--to', q(profile));
+  else if (opts.mode === 'resume' && opts.sessionId) parts.push('resume', q(profile), q(opts.sessionId));
+  else if (opts.mode === 'login') parts.push(q(profile), 'auth', 'login');
+  else parts.push(q(profile));
   return parts.join(' ');
 }
 
@@ -258,7 +261,8 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, url: URL, se
   if (path === '/api/profiles/add') {
     const name = String(body.name ?? '').toLowerCase();
     if (!isValidProfileName(name)) return json(res, 400, { error: 'Use 1-32 lowercase letters, numbers, - or _.' });
-    await openInTerminal(`${shellQuote(MC_BIN)} add ${shellQuote(name)}${body.label ? ` --label ${shellQuote(String(body.label))}` : ''}`, loadConfig().terminalApp);
+    const q = IS_WIN ? cmdQuote : shellQuote;
+    await openInTerminal(`${q(IS_WIN ? mcLauncher() : MC_BIN)} add ${q(name)}${body.label ? ` --label ${q(String(body.label))}` : ''}`, loadConfig().terminalApp);
     return json(res, 200, { ok: true });
   }
   const pm = /^\/api\/profiles\/([\w-]+)(\/remove)?$/.exec(path);
@@ -305,8 +309,8 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, url: URL, se
     } else {
       const key = String(body.key ?? '').trim();
       if (!/^sk-ant-[\w-]{20,}$/.test(key)) return json(res, 400, { error: 'That does not look like an Anthropic API key (sk-ant-…).' });
-      if (!(await saveApiKey(key))) return json(res, 500, { error: 'Could not save the key to the Keychain.' });
-      logActivity('settings', 'API key saved to the Keychain');
+      if (!(await saveApiKey(key))) return json(res, 500, { error: 'Could not save the key.' });
+      logActivity('settings', 'API key saved');
     }
     return json(res, 200, await rebuild());
   }
