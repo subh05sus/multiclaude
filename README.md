@@ -10,6 +10,8 @@ Live usage for every account in a dashboard, the menu bar, the terminal and Clau
 [Install](#install) · [Quick start](#quick-start) · [Usage guide](docs/usage.md) · [Setup guide](docs/setup.md) ·
 [Configuration](docs/configuration.md) · [How it works](docs/how-it-works.md) · [Troubleshooting](docs/troubleshooting.md)
 
+[![Latest release](https://img.shields.io/github/v/release/subh05sus/multiclaude)](https://github.com/subh05sus/multiclaude/releases/latest)
+[![CI](https://github.com/subh05sus/multiclaude/actions/workflows/ci.yml/badge.svg)](https://github.com/subh05sus/multiclaude/actions/workflows/ci.yml)
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue)
 ![Platform: macOS, Windows, Linux](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey)
 ![Node 22.18+](https://img.shields.io/badge/node-22.18%2B-green)
@@ -113,6 +115,9 @@ Linux: the same `./bin/mc setup --shell`; the service runs as a systemd user uni
 
 Your existing `~/.claude` becomes the profile called **main**. Nothing in it moves.
 
+**Releases:** every version is on the [releases page](https://github.com/subh05sus/multiclaude/releases), with
+its changes, a source zip (an alternative to `git clone`) and the prebuilt macOS menu bar app.
+
 There's nothing to `npm install` to run it. `npm install` only fetches the TypeScript types for development.
 
 ## Quick start
@@ -185,6 +190,11 @@ npm run check    # tsc --noEmit
 npm run lint     # design guard: no side-edge accents, no clipped focus rings, no raw colours in the UI
 npm run demo     # the dashboard with sample data on http://127.0.0.1:4899
 ```
+
+Releasing: bump `version` in `package.json`, add a `## <version> — <date>` section to `CHANGELOG.md`, commit,
+then `git tag -a v<version> -m "multiclaude <version>" && git push origin main v<version>`. The
+[release workflow](.github/workflows/release.yml) tests, builds the menu bar app and publishes the release with
+notes from the changelog.
 
 Layout: `src/` (TypeScript, run directly by Node), `web/` (the dashboard: plain HTML, CSS and JS), `menubar/`
 (Swift), `test/`, `scripts/`, `docs/`.
