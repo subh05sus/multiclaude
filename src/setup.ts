@@ -178,13 +178,27 @@ function plist(label: string, args: string[], keepAlive: boolean): string {
 `;
 }
 
+function pause(ms: number): void {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+/**
+ * (Re)load a LaunchAgent. `launchctl bootout` returns before the old job is fully gone, so an
+ * immediate bootstrap can fail with "Input/output error" when setup runs again: retry briefly.
+ */
 function loadAgent(label: string, content: string): void {
   mkdirSync(AGENTS, { recursive: true });
   const file = join(AGENTS, `${label}.plist`);
   const uid = process.getuid?.() ?? 501;
-  spawnSync('launchctl', ['bootout', `gui/${uid}/${label}`], { stdio: 'ignore' });
+  const target = `gui/${uid}/${label}`;
+  spawnSync('launchctl', ['bootout', target], { stdio: 'ignore' });
   writeFileSync(file, content);
-  execFileSync('launchctl', ['bootstrap', `gui/${uid}`, file], { stdio: 'ignore' });
+  for (let i = 0; i < 10; i++) {
+    if (spawnSync('launchctl', ['bootstrap', `gui/${uid}`, file], { stdio: 'ignore' }).status === 0) return;
+    pause(500);
+  }
+  // Still registered from before: restart it in place instead.
+  execFileSync('launchctl', ['kickstart', '-k', target], { stdio: 'ignore' });
 }
 
 export function unloadAgent(label: string): void {

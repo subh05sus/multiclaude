@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.1 — 2026-10-31
+
+- Fix: running `mc setup` again (to update) could fail while reloading the menu bar app's login item, because
+  macOS hadn't finished unloading the old one. It now waits and retries, and restarts the app in place if needed.
+
 ## 0.3.0 — 2026-10-31
 
 - **Auto-resume:** when a session stops at its account's usage limit, a background `StopFailure` hook waits for

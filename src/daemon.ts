@@ -16,7 +16,7 @@ import { listSessions, statsReport, refreshStats } from './sessions.ts';
 import { buildHandover, handoverMarkdown } from './handover.ts';
 import type { AppState, ProfileState } from './state.ts';
 
-const VERSION = '0.3.0';
+const VERSION = '0.3.1';
 
 const apiUsage = new Map<string, Usage>();
 const infoCache = new Map<string, { at: number; info: ProfileInfo }>();
