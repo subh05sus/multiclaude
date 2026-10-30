@@ -54,6 +54,11 @@ Three sources, merged per window with the freshest reading winning:
    refreshes that login: refreshing would rotate the token under a running session. An account idle long enough
    for its token to expire shows "token expired" until you use it again.
 
+A session keeps the login it started with, so a Claude Code window opened before you switched accounts by hand
+still spends (and reports) the old account. Reset times are per account, so the status line compares each
+reading's weekly (or 5-hour) reset time with what Anthropic last reported for each profile: a reading that fits
+another profile is filed there and marked "(older login)", and one that fits none isn't recorded at all.
+
 A window whose reset time has passed counts as 0%. Before an alert fires on a status-line or relay reading, the
 service asks the usage endpoint to confirm it.
 

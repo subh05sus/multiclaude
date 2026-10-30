@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { loadConfig } from './config.ts';
 import { profileFromEnv } from './profiles.ts';
 import { readState } from './state.ts';
-import { writeLiveUsage, type Usage, type UsageWindow } from './usage.ts';
+import { writeLiveUsage, ownerOf, type Usage, type UsageWindow } from './usage.ts';
 import { recordSessionStart } from './sessions.ts';
 
 async function readStdin(): Promise<string> {
@@ -37,7 +37,7 @@ function win(v: unknown): UsageWindow | undefined {
 export async function statusline(): Promise<void> {
   const raw = await readStdin();
   const cfg = loadConfig();
-  const profile = profileFromEnv();
+  const envProfile = profileFromEnv();
   let input: Record<string, unknown> = {};
   try {
     input = raw ? JSON.parse(raw) : {};
@@ -47,9 +47,20 @@ export async function statusline(): Promise<void> {
 
   const rl = input.rate_limits as Record<string, unknown> | undefined;
   const mine: Usage | null = rl ? { source: 'statusline', at: Date.now(), fiveHour: win(rl.five_hour), sevenDay: win(rl.seven_day) } : null;
+  // A session keeps the login it started with. If this one started before you switched
+  // accounts, its usage belongs to another account: file it there, or nowhere.
+  let profile = envProfile;
+  let note = '';
   if (mine && (mine.fiveHour || mine.sevenDay)) {
+    const owner = ownerOf(envProfile, mine, cfg.profiles.map((p) => p.name));
+    if (owner && owner !== envProfile) {
+      profile = owner;
+      note = ` ${DIM}(older login)${RESET}`;
+    } else if (!owner) {
+      note = ` \x1b[33m⚠ signed in to another account; restart this session${RESET}`;
+    }
     try {
-      writeLiveUsage(profile, mine);
+      if (owner) writeLiveUsage(owner, mine);
     } catch {
       /* the line still prints */
     }
@@ -66,7 +77,7 @@ export async function statusline(): Promise<void> {
   const me = state?.profiles.find((p) => p.name === profile);
   const five = mine?.fiveHour ?? me?.usage.fiveHour;
   const week = mine?.sevenDay ?? me?.usage.sevenDay;
-  let line = `\x1b[1m◆ ${profile}${RESET} ${DIM}5h${RESET} ${pctText(five)} ${DIM}wk${RESET} ${pctText(week)}`;
+  let line = `\x1b[1m◆ ${profile}${RESET}${note} ${DIM}5h${RESET} ${pctText(five)} ${DIM}wk${RESET} ${pctText(week)}`;
   if (me?.fallback.active) line += ` \x1b[35m● API key${RESET}`;
 
   const others = (state?.profiles ?? []).filter((p) => p.name !== profile && !p.paused && p.info.loggedIn);

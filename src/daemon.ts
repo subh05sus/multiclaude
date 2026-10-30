@@ -5,7 +5,7 @@ import { loadConfig, saveConfig, type Config } from './config.ts';
 import { MC_DIR, WEB_DIR, STATE_FILE, ACTIVITY_FILE, MAIN_PROFILE, LIVE_USAGE_DIR, MC_BIN } from './paths.ts';
 import { getSecret, writeJson, readJsonLines, logActivity, openInTerminal, shellQuote, isValidProfileName, type Activity } from './util.ts';
 import { profileInfo, ensureLinks, accountUuidMap, removeProfileDir, isMain, configDirEnv, type ProfileInfo } from './profiles.ts';
-import { fetchUsage, readLiveUsage, mergeUsage, peakPct, writeLiveUsage, type Usage } from './usage.ts';
+import { fetchUsage, readLiveUsage, mergeUsage, peakPct, writeLiveUsage, writeApiUsage, ownerOf, type Usage } from './usage.ts';
 import { pickAccount, reorder, switchAtFor } from './pick.ts';
 import { checkAlerts, wouldAlert } from './alerts.ts';
 import { handleRelay, fallbackState, clearFallback } from './relay.ts';
@@ -15,7 +15,7 @@ import { listSessions, statsReport, refreshStats } from './sessions.ts';
 import { buildHandover, handoverMarkdown } from './handover.ts';
 import type { AppState, ProfileState } from './state.ts';
 
-const VERSION = '0.1.0';
+const VERSION = '0.1.1';
 
 const apiUsage = new Map<string, Usage>();
 const infoCache = new Map<string, { at: number; info: ProfileInfo }>();
@@ -86,7 +86,10 @@ async function rebuild(): Promise<AppState> {
         lastConfirm.set(p.name, Date.now());
         void fetchUsage(p.name)
           .then((u) => {
-            if (!u.error) apiUsage.set(p.name, u);
+            if (!u.error) {
+              apiUsage.set(p.name, u);
+              writeApiUsage(p.name, u);
+            }
           })
           .finally(() => {
             confirming.delete(p.name);
@@ -123,6 +126,7 @@ async function poll(force = false): Promise<void> {
     // Keep the last good reading if this one failed.
     if (u.error && prev && !prev.error) apiUsage.set(p.name, { ...prev, error: undefined });
     else apiUsage.set(p.name, u);
+    if (!u.error) writeApiUsage(p.name, u);
   }
   await rebuild();
 }
@@ -342,7 +346,8 @@ export async function runDaemon(): Promise<void> {
         return handleRelay(req, res, profile, rm[3] + url.search, {
           config: loadConfig,
           onUsage: (p, u) => {
-            writeLiveUsage(p, u);
+            const owner = ownerOf(p, u, loadConfig().profiles.map((x) => x.name), (n) => apiUsage.get(n) ?? null);
+            if (owner) writeLiveUsage(owner, u);
           },
           onFallbackChange: () => void rebuild(),
         });

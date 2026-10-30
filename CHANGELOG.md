@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.1 — 2026-10-30
+
+- Status line readings from a session started on an older login are filed under the account they belong to
+  (matched by reset time), or dropped, instead of landing on the session's profile. This caused a false
+  "90% of the weekly limit" alert.
+- Tests never send desktop notifications.
+
 ## 0.1.0 — 2026-10-30
 
 First release.

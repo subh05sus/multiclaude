@@ -101,6 +101,37 @@ export async function fetchUsage(name: string): Promise<Usage> {
   }
 }
 
+/** The last good reading from Anthropic's usage endpoint, per profile (written by the service). */
+export function apiUsageFile(name: string): string {
+  return join(LIVE_USAGE_DIR, '..', 'usage-api', `${name}.json`);
+}
+export function readApiUsage(name: string): Usage | null {
+  return readJson<Usage | null>(apiUsageFile(name), null);
+}
+export function writeApiUsage(name: string, u: Usage): void {
+  writeJson(apiUsageFile(name), u);
+}
+
+/**
+ * Does a reading belong to this profile's account? Reset times are per account, so a
+ * reading whose weekly (or 5-hour) reset is far from what Anthropic reported for the profile
+ * came from another login, such as a session started before you switched accounts by hand.
+ * Returns undefined when there's nothing to compare.
+ */
+export function readingFits(reading: Usage, api: Usage | null, now = Date.now()): boolean | undefined {
+  if (!api || api.error) return undefined;
+  const close = (a?: number, b?: number) => (a && b && b > now ? Math.abs(a - b) < 10 * 60_000 : undefined);
+  const week = close(reading.sevenDay?.resetsAt, api.sevenDay?.resetsAt);
+  if (week !== undefined) return week;
+  return close(reading.fiveHour?.resetsAt, api.fiveHour?.resetsAt);
+}
+
+/** Which profile a reading belongs to: the session's own, another that fits, or null for none. */
+export function ownerOf(envProfile: string, reading: Usage, names: string[], api: (n: string) => Usage | null = readApiUsage): string | null {
+  if (readingFits(reading, api(envProfile)) !== false) return envProfile;
+  return names.find((n) => n !== envProfile && readingFits(reading, api(n)) === true) ?? null;
+}
+
 /** Usage that the status line or relay reported for a profile. */
 export function liveUsageFile(name: string): string {
   return join(LIVE_USAGE_DIR, `${name}.json`);

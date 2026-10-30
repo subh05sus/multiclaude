@@ -7,7 +7,7 @@ import { join } from 'node:path';
 process.env.MC_HOME = mkdtempSync(join(tmpdir(), 'mc-pick-'));
 const { defaultConfig } = await import('../src/config.ts');
 const { pickAccount, reorder } = await import('../src/pick.ts');
-const { parseUsageResponse, mergeUsage, usageFromHeaders, peakPct } = await import('../src/usage.ts');
+const { parseUsageResponse, mergeUsage, usageFromHeaders, peakPct, ownerOf } = await import('../src/usage.ts');
 
 const now = Date.now();
 const u = (five: number, week = 0) => ({ source: 'api' as const, at: now, fiveHour: { pct: five, resetsAt: now + 3600_000 }, sevenDay: { pct: week, resetsAt: now + 86400_000 } });
@@ -94,4 +94,17 @@ test('headers: fractions become percent; a rejected status means limited', () =>
   assert.equal(h!.limited, true);
   assert.equal(peakPct(h!), 100);
   assert.equal(usageFromHeaders({}), null);
+});
+
+test('a reading from an older login is filed under the account it belongs to, or dropped', () => {
+  const mainApi = { source: 'api' as const, at: now, sevenDay: { pct: 10, resetsAt: now + 6 * 86400_000 } };
+  const maxApi = { source: 'api' as const, at: now, sevenDay: { pct: 100, resetsAt: now + 86400_000 } };
+  const api = (n: string) => (n === 'main' ? mainApi : n === 'max' ? maxApi : null);
+  const fromMax = { source: 'statusline' as const, at: now, sevenDay: { pct: 90, resetsAt: now + 86400_000 + 1000 } };
+  const fromMain = { source: 'statusline' as const, at: now, sevenDay: { pct: 11, resetsAt: now + 6 * 86400_000 - 500 } };
+  const fromStranger = { source: 'statusline' as const, at: now, sevenDay: { pct: 50, resetsAt: now + 3 * 86400_000 } };
+  assert.equal(ownerOf('main', fromMain, ['main', 'max'], api), 'main');
+  assert.equal(ownerOf('main', fromMax, ['main', 'max'], api), 'max', 'session started before switching accounts');
+  assert.equal(ownerOf('main', fromStranger, ['main', 'max'], api), null, 'an account multiclaude does not know');
+  assert.equal(ownerOf('new', fromStranger, ['new'], () => null), 'new', 'nothing to compare: trust the session');
 });

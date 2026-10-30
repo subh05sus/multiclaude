@@ -54,6 +54,11 @@ Automation. With iTerm, choose it in Settings → Open sessions in.
 They come from macOS's `osascript`, which shows up as "Script Editor". Allow its notifications in System Settings
 → Notifications. Check that alerts are on in Settings.
 
+**The status line says "signed in to another account; restart this session" or "(older login)"**
+That Claude Code window was started before you switched accounts, so it's still using the old login. Its usage
+is filed under the account it really belongs to (or ignored if multiclaude doesn't know that account). Close it
+and start a new session with `claude` or `mc`.
+
 **I got a notification that looks wrong**
 Look at Activity for the reading it was based on, and press refresh. Alerts on status-line readings are confirmed
 with Anthropic first, so it should be rare. Clearing `~/.multiclaude/alert-state.json` resets which levels fired.
