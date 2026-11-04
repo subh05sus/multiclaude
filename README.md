@@ -79,6 +79,30 @@ The screenshots use sample data (`npm run demo` serves it, so you can try the da
 
 ## Install
 
+### Install with an agent
+
+Paste this into Claude Code and it does the install for you. You only step in to answer its questions and sign in to
+your accounts.
+
+```text
+Install multiclaude for me from https://github.com/subh05sus/multiclaude. Read its README first.
+
+1. Check the requirements: Node.js 22.18+, git, and Claude Code signed in. If something is missing, tell me how to
+   get it and stop.
+2. Clone the repo to ~/multiclaude. If it's already there, pull the latest instead.
+3. Tell me what setup will change on my computer, then ask me whether plain `claude` should pick an account by
+   itself (the --shell option).
+4. Run `./bin/mc setup`, with --shell if I said yes. On macOS without the Xcode command line tools, add
+   --no-menubar. On Windows, use the commands in the README's Windows section.
+5. Run `mc doctor` (or `./bin/mc doctor` if mc isn't on the PATH yet) and fix anything it flags.
+6. Ask me what to call each extra Claude account. Signing in opens a browser, so don't run this yourself: tell me to
+   type `! mc add <name>` at the prompt for each one, and wait until I've done them.
+7. Ask me which account to try first and run `mc order` with my answer.
+8. Finish by telling me how to start a session, the dashboard address, and to open a new terminal tab.
+```
+
+### Install by hand
+
 ```sh
 git clone https://github.com/subh05sus/multiclaude.git ~/multiclaude
 cd ~/multiclaude
