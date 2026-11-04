@@ -1,0 +1,7 @@
+{
+  "name": "multiclaude-move",
+  "version": "0.1.0",
+  "description": "A Move to <account> button under the prompt when this account is near its limit",
+  "types": "./types/index.d.ts",
+  "license": "MIT"
+}

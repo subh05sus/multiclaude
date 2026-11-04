@@ -92,7 +92,12 @@ Turn off "Keep every Claude Code feature on" in Settings and restart the session
 update changed the internal setting it relies on; please open an issue.
 
 **Two windows on one conversation**
-After `mc next`, close the old window. Both write to the same transcript file otherwise.
+After `mc next` or **Move to <account>**, close the old window. Both write to the same transcript file otherwise.
+
+**The Move button doesn't show or doesn't respond**
+It only shows once the account is past its switch-at level and another account has room. Open sessions need
+`/reload-plugins` or a restart after `mc setup`. `claude plugin list` should show `multiclaude-move@multiclaude`;
+if it doesn't, run `mc setup` again. Clicking needs fullscreen mode (`"tui": "fullscreen"`). `mc next` always works.
 
 **The menu bar app didn't build**
 It needs `swiftc` from the Xcode command line tools: `xcode-select --install`, then `mc setup` again. Or skip
@@ -111,8 +116,8 @@ subscriptions to get around usage limits is against Anthropic's terms. Read
 [their terms](https://www.anthropic.com/legal/consumer-terms) and use your accounts within them.
 
 **Does a session ever switch Claude accounts automatically?**
-No. New sessions start on the picked account; an open session stays where it is until you run `mc next` or
-click Continue. The only automatic switch is to your own API key, if you turned the fallback on.
+No. New sessions start on the picked account; an open session stays where it is until you press **Move to <account>**,
+run `mc next` or click Continue. The only automatic switch is to your own API key, if you turned the fallback on.
 
 **Does `claude --resume` work across accounts?**
 Yes. All profiles share the same `projects` folder, so every account sees every conversation.

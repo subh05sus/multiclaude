@@ -38,8 +38,8 @@ Live usage for every account in a dashboard, the menu bar, the terminal and Clau
   - Claude Code's own status line.
 - **Alerts** as desktop notifications when an account crosses 80% and 95% (you choose the levels), naming the next
   account with room, and again when a limit resets.
-- **Move a session in one step.** `mc next` reopens the conversation in this folder on the next account with
-  room, with the whole context. `mc next --fresh` starts clean there with a short handover note instead.
+- **Move a session in one click.** Press **Move to <account>** under the prompt or in the menu bar, or run `mc next`, and
+  the conversation reopens on the next account with room, with the whole context. `mc next --fresh` starts clean there with a short handover note instead.
 - **Auto-resume.** When a session stops at its account's usage limit, it waits for that account to reset,
   then continues by itself, picking up where it left off. The notification also names another account with room,
   in case you'd rather `mc next` now.
@@ -54,7 +54,7 @@ Live usage for every account in a dashboard, the menu bar, the terminal and Clau
 It never moves a running conversation to another Claude account by itself (auto-resume waits for the *same*
 account to reset). Pooling subscriptions to get around
 their usage limits is against Anthropic's terms and can get accounts banned, so switching accounts is always your
-click or your command (`mc next`). The only automatic switch is to **your own API key**, which you pay for per
+click (**Move to <account>**) or your command (`mc next`). The only automatic switch is to **your own API key**, which you pay for per
 request.
 
 ## Screenshots
@@ -93,7 +93,8 @@ cd ~/multiclaude
 3. starts the background service at login (LaunchAgent `com.multiclaude.daemon`, port 4880, localhost only);
 4. builds the menu bar app into `~/.multiclaude/MultiClaude.app` and opens it at login (needs the Xcode command
    line tools for `swiftc`; skip it with `--no-menubar`);
-5. with `--shell`, makes plain `claude` pick an account (adds a small function to `~/.zshrc` / `~/.bashrc` /
+5. installs the small `multiclaude-move` plugin that draws the **Move to <account>** button under the prompt;
+6. with `--shell`, makes plain `claude` pick an account (adds a small function to `~/.zshrc` / `~/.bashrc` /
    fish, between marker lines).
 
 Then **open a new terminal tab** and check everything with `mc doctor`.

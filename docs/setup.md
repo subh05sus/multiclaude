@@ -183,6 +183,7 @@ For iTerm instead of Terminal: **Settings → Open sessions in → iTerm**.
 | `~/.claude/settings.json` | `statusLine` set to `mc statusline`; a `SessionStart` hook running `mc hook session-start`. A backup is saved as `settings.json.mc-backup-<time>` | `mc uninstall` (restores your previous status line) |
 | `~/Library/LaunchAgents/com.multiclaude.daemon.plist` | Runs the background service at login | `mc uninstall` |
 | `~/Library/LaunchAgents/com.multiclaude.menubar.plist` and `~/.multiclaude/MultiClaude.app` | The menu bar app | `mc uninstall` |
+| Claude Code plugin `multiclaude-move@multiclaude` | The **Move to <account>** button, read from `plugin/` in the repo | `mc uninstall` |
 | `~/.zshrc`, `~/.bashrc`, `~/.bash_profile` or fish (only with `--shell` / `mc shell on`) | A `claude` function between `# >>> multiclaude` marker lines; the old file is saved as `.mc-backup` | `mc shell off` |
 | `~/.multiclaude/` | Config, profiles, usage, logs | Delete the folder after `mc uninstall` |
 

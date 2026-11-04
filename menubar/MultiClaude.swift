@@ -154,6 +154,13 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 it.attributedTitle = line
                 it.isEnabled = false
                 menu.addItem(it)
+                if let to = s.pick.name, to != w.profile, !w.sessionId.hasPrefix("pid-") {
+                    let mv = NSMenuItem(title: "Move to \(to)", action: #selector(moveSession(_:)), keyEquivalent: "")
+                    mv.target = self
+                    mv.representedObject = ["sessionId": w.sessionId, "to": to]
+                    mv.indentationLevel = 1
+                    menu.addItem(mv)
+                }
             }
         }
         if s.fallback.enabled {
@@ -189,6 +196,10 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc func togglePause(_ sender: NSMenuItem) {
         guard let name = sender.representedObject as? String, let p = state?.profiles.first(where: { $0.name == name }) else { return }
         post("/api/profiles/\(name)", ["paused": !p.paused])
+    }
+    @objc func moveSession(_ sender: NSMenuItem) {
+        guard let body = sender.representedObject as? [String: String] else { return }
+        post("/api/move", body)
     }
     @objc func refreshNow() { post("/api/refresh", [:]) }
     @objc func toggleAutoResume() { post("/api/config", ["autoResume": ["enabled": !(state?.autoResume?.enabled ?? true)]]) }

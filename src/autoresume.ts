@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { loadConfig, type Config } from './config.ts';
@@ -110,7 +111,7 @@ export async function waitForReset(profile: string, cfg: Config, deps: WaitDeps)
   deps.onPlan?.(plan.kind === 'reset' ? plan.at : undefined);
   const other = deps.nextWithRoom(profile);
   const until = plan.kind === 'reset' ? ` until ${when(plan.at)}` : '';
-  const tail = other ? ` Don't want to wait? Run "mc next" to continue on ${other} now.` : '';
+  const tail = other ? ` Don't want to wait? Press "Move to ${other}" under the prompt or in the menu bar, or run "mc next".` : '';
   deps.notify('multiclaude', `${profile} is out${until}. This session will continue by itself when it resets.${tail}`);
   deps.log('limit-wait', `Session paused at the limit${until}; will continue when it resets${other ? ` (${other} has room now)` : ''}`, profile);
 
@@ -161,6 +162,27 @@ export function listWaiters(): Waiter[] {
     }
   }
   return out.sort((a, b) => (a.until ?? Infinity) - (b.until ?? Infinity));
+}
+
+/**
+ * Stop a session's waiter after it moves to another account, so the old window doesn't wake at the
+ * reset and write to the same conversation. The waiter leaves quietly on SIGTERM, without a rewake.
+ */
+export function stopWaiter(sessionId: string): boolean {
+  const lock = join(WAITERS, `${sessionId.replace(/[^\w-]/g, '')}.json`);
+  try {
+    const { pid } = JSON.parse(readFileSync(lock, 'utf8')) as { pid: number };
+    if (!pid || !alive(pid)) return false;
+    // The pid could have been reused since the file was written.
+    if (process.platform !== 'win32') {
+      const cmd = spawnSync('ps', ['-o', 'command=', '-p', String(pid)], { encoding: 'utf8' }).stdout ?? '';
+      if (!cmd.includes('limit-wait')) return false;
+    }
+    process.kill(pid, 'SIGTERM');
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** The hook entry point: `mc hook limit-wait`. Exit 2 wakes the session (asyncRewake). */

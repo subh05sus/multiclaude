@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- **Move to <account>** button: under the prompt, right below the status line, through a small plugin `mc setup`
+  installs (status line links don't work in Apple Terminal), and in the menu bar under each session waiting to resume. One click reopens the conversation on that account in a new window and stops the old session's
+  auto-resume. It still takes your click; nothing moves by itself.
+- Notifications at a limit name the button instead of `mc next`.
+
 ## 0.3.2 — 2026-10-31
 
 - Menu bar app: a "Waiting to resume" section listing sessions paused at a limit and when each will continue, a

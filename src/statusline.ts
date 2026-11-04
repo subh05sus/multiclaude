@@ -4,6 +4,7 @@ import { profileFromEnv } from './profiles.ts';
 import { readState } from './state.ts';
 import { writeLiveUsage, ownerOf, type Usage, type UsageWindow } from './usage.ts';
 import { recordSessionStart } from './sessions.ts';
+import { movePluginEnabled } from './setup.ts';
 
 async function readStdin(): Promise<string> {
   if (process.stdin.isTTY) return '';
@@ -89,7 +90,8 @@ export async function statusline(): Promise<void> {
   }
   const peak = Math.max(five?.pct ?? 0, week?.pct ?? 0);
   const at = me?.switchAt ?? cfg.switchAt;
-  if (peak >= at && state?.pick.name && state.pick.name !== profile) line += `  ${DIM}→ mc next${RESET}`;
+  // With the plugin on, a real "Move to <account>" button sits right under this line.
+  if (peak >= at && state?.pick.name && state.pick.name !== profile && !movePluginEnabled()) line += `  ${DIM}→ mc next${RESET}`;
   out.push(line);
   process.stdout.write(out.join(' ') + '\n');
 }

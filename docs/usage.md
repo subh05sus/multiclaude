@@ -97,8 +97,9 @@ The function only exists in interactive shells. Editors, the Claude desktop app 
 ## When an account fills up
 
 1. As it crosses your alert levels (80% and 95% by default) you get a notification, which names the next account
-   with room. The status line shows `→ mc next` once it's past its switch-at level.
-2. When you're ready, in the same folder:
+   with room. A **Move to <account>** button appears under the prompt once it's past its switch-at level.
+2. When you're ready, click **Move to <account>**: the conversation reopens there in a new window. Or, in the same
+   folder:
 
    ```sh
    mc next            # the same conversation continues on the next account with room
@@ -192,7 +193,7 @@ The icon shows the account a new session would go to and its usage, like `◐ pe
   or signed out, purple on the API key). Each has a submenu: Start a session, Sign in again, Pause, and its email
   and plan;
 - the API key's spend today, when the fallback is on;
-- **Waiting to resume**: sessions paused at a limit and when each will continue (a ⏸ also appears next to the
+- **Waiting to resume**: sessions paused at a limit and when each will continue, with a **Move to <account>** item under each when another account has room (a ⏸ also appears next to the
   icon's percentage);
 - **Auto-resume at limits** (on/off), **Open dashboard** (⌘D), **Refresh usage** (⌘R), **Quit**.
 
@@ -209,7 +210,12 @@ After `mc setup`, every Claude Code session shows its account and usage at the b
 - The account and its 5-hour and weekly usage, coloured green, then orange from 70%, red from 90%.
 - `● API key` while that account is on the fallback.
 - The other accounts' peak usage.
-- `→ mc next` once this account is past its switch-at level and another has room.
+- `→ mc next` once this account is past its switch-at level and another has room, if the Move button plugin is off.
+
+Under the status line, a **Move to <account>** button appears at the same point (`mc setup` installs the
+`multiclaude-move` plugin that draws it). Pressing it reopens this conversation on that account in a new window and
+stops this session's auto-resume. Close the old window afterwards. Clicking needs Claude Code's fullscreen mode
+(`"tui": "fullscreen"` in settings); elsewhere use the menu bar item or `mc next`.
 
 The status line also reports the session's usage to the service, so the dashboard and menu bar stay current
 without extra requests to Anthropic. If you had a status line before, it's kept and shown first.
@@ -235,7 +241,8 @@ On by default after `mc setup`. When a Claude Code session stops because its acc
 1. A background hook (`StopFailure`, matcher `rate_limit`) works out which of that account's windows is full and
    when it resets.
 2. You get a notification: "work is out until 6:30 PM. This session will continue by itself when it resets."
-   If another account has room, it says so, in case you'd rather run `mc next` now.
+   If another account has room, it says so, in case you'd rather press **Move to <account>** under the prompt or in
+   the menu bar now.
 3. Just after the reset time, it checks with Anthropic that the limit really lifted (and keeps checking every
    few minutes if the reset is late), then wakes the session: Claude continues where it stopped, without
    repeating finished work.

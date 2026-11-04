@@ -57,7 +57,7 @@ test('waits for its own account to reset, confirms, then resumes', async () => {
   assert.deepEqual(r, { resume: true, reason: 'the limit reset' });
   assert.ok(h.now >= T0 + 2 * H, 'not before the reset');
   assert.ok(h.now < T0 + 2 * H + 6 * 60_000, 'soon after the reset');
-  assert.match(h.notes[0], /main is out until .*continue by itself.*mc next.*claude-max/);
+  assert.match(h.notes[0], /main is out until .*continue by itself.*Move to claude-max/);
   assert.ok(h.checks <= 3, 'does not hammer the usage endpoint while waiting');
 });
 

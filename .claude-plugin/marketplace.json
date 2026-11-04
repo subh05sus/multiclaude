@@ -1,0 +1,11 @@
+{
+  "name": "multiclaude",
+  "owner": { "name": "subh05sus" },
+  "plugins": [
+    {
+      "name": "multiclaude-move",
+      "source": "./plugin",
+      "description": "A Move to <account> button under the prompt when this account is near its limit"
+    }
+  ]
+}

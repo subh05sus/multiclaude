@@ -9,7 +9,7 @@ import { profileInfo, ensureLinks, accountUuidMap, removeProfileDir, isMain, con
 import { fetchUsage, readLiveUsage, mergeUsage, peakPct, writeLiveUsage, writeApiUsage, ownerOf, type Usage } from './usage.ts';
 import { pickAccount, reorder, switchAtFor } from './pick.ts';
 import { checkAlerts, wouldAlert } from './alerts.ts';
-import { listWaiters } from './autoresume.ts';
+import { listWaiters, stopWaiter } from './autoresume.ts';
 import { handleRelay, fallbackState, clearFallback } from './relay.ts';
 import { readApiKey, saveApiKey, deleteApiKey, deleteGenericPassword, claudeKeychainService } from './keychain.ts';
 import { spentToday, readSpend } from './spend.ts';
@@ -184,6 +184,34 @@ function launchCommand(profile: string, opts: { cwd?: string; sessionId?: string
   return parts.join(' ');
 }
 
+const recentMoves = new Map<string, number>();
+
+/** Reopen a session on another account, after a press of "Move to <account>". */
+async function moveSession(sessionId: string, to: string): Promise<{ status: number; title: string; detail: string }> {
+  const fail = (status: number, detail: string) => ({ status, title: 'Not moved', detail });
+  const cfg = loadConfig();
+  if (!cfg.profiles.some((p) => p.name === to)) return fail(400, `There's no account called ${to}.`);
+  const s = state ?? (await rebuild());
+  const room = pickAccount(cfg, s.profiles.filter((p) => p.name === to).map((p) => ({ name: p.name, loggedIn: p.info.loggedIn, usage: p.usage })));
+  if (room.name !== to) return fail(409, `${to} has no room right now. ${room.reason}`);
+  const sess = listSessions(300, accountUuidMap(cfg.profiles.map((p) => p.name))).find((x) => x.id === sessionId);
+  if (!sess) return fail(404, 'That session could not be found.');
+
+  // A second press must not open a second window on the same conversation.
+  const key = `${sessionId}:${to}`;
+  if (Date.now() - (recentMoves.get(key) ?? 0) < 60_000) return { status: 200, title: `Already moved to ${to}`, detail: 'It opened in a new window. Close the old window.' };
+
+  try {
+    await openInTerminal(launchCommand(to, { cwd: sess.cwd, sessionId, mode: 'resume' }), cfg.terminalApp);
+  } catch (e) {
+    return fail(500, `Could not open ${cfg.terminalApp}: ${(e as Error).message}`);
+  }
+  recentMoves.set(key, Date.now());
+  stopWaiter(sessionId);
+  logActivity('switch', `Moved "${sess.title.slice(0, 60)}" from ${sess.profile ?? 'another account'} to ${to}`, to);
+  return { status: 200, title: `Moved to ${to}`, detail: 'It opened in a new window with the whole conversation. Close the old window so both don\'t write to it.' };
+}
+
 async function handleApi(req: IncomingMessage, res: ServerResponse, url: URL, secret: string): Promise<void> {
   const method = req.method ?? 'GET';
   const path = url.pathname;
@@ -310,6 +338,10 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, url: URL, se
       return json(res, 500, { error: `Could not open ${cfg.terminalApp}: ${(e as Error).message}`, command: cmd });
     }
     return json(res, 200, { ok: true, command: cmd });
+  }
+  if (path === '/api/move') {
+    const r = await moveSession(String(body.sessionId ?? ''), String(body.to ?? ''));
+    return json(res, r.status, r.status === 200 ? { ok: true, title: r.title } : { error: r.detail });
   }
   if (path === '/api/apikey') {
     if (body.remove) {

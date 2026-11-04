@@ -334,7 +334,7 @@ async function cmdAutoResume(args: string[]): Promise<void> {
 }
 
 async function cmdSetup(args: string[]): Promise<void> {
-  const { installClaudeSettings, installBinLink, installAutostart, installMenubar } = await import('./setup.ts');
+  const { installClaudeSettings, installBinLink, installAutostart, installMenubar, installMovePlugin } = await import('./setup.ts');
   const linkNote = installBinLink();
   console.log(linkNote ? `• ${linkNote}` : `• mc is on your PATH (~/.local/bin/${IS_WIN ? 'mc.cmd' : 'mc'})`);
   for (const c of installClaudeSettings()) console.log(`• Added to ~/.claude/settings.json: ${c} (backup saved next to it)`);
@@ -343,6 +343,8 @@ async function cmdSetup(args: string[]): Promise<void> {
     stopDaemon();
   }
   console.log(`• ${installAutostart()}`);
+  const moveErr = installMovePlugin();
+  console.log(moveErr ? `• The Move button plugin did not install (mc next still works):\n${moveErr}` : '• "Move to <account>" button is on (run /reload-plugins in open sessions)');
   if (!args.includes('--no-menubar') && process.platform === 'darwin') {
     const err = installMenubar();
     console.log(err ? `• Menu bar app did not build:\n${err}` : '• Menu bar app installed and opens at login');
@@ -360,8 +362,9 @@ async function cmdSetup(args: string[]): Promise<void> {
 }
 
 async function cmdUninstall(): Promise<void> {
-  const { removeClaudeSettings, uninstallAgents } = await import('./setup.ts');
+  const { removeClaudeSettings, uninstallAgents, removeMovePlugin } = await import('./setup.ts');
   const { uninstallShell } = await import('./shell.ts');
+  removeMovePlugin();
   for (const c of removeClaudeSettings()) console.log(`• Removed ${c} from settings.json`);
   for (const f of uninstallShell()) console.log(`• Removed the \`claude\` function from ${f}`);
   uninstallAgents();

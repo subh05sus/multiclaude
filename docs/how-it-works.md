@@ -89,10 +89,16 @@ passes. A lock file per session stops a second rate-limit stop from starting a s
 
 ## Moving a session
 
-All profiles share `~/.claude/projects`, so every profile can see every conversation. `mc next` and
-"Continue on" run `claude --resume <id>` under the target profile, and the whole conversation carries over.
+All profiles share `~/.claude/projects`, so every profile can see every conversation. `mc next`,
+**Move to <account>** and "Continue on" run `claude --resume <id>` under the target profile, and the whole conversation carries over.
 The prompt cache doesn't, since caches belong to an account, so the first reply on the new account reads the
 context at full price.
+
+The button is a small Claude Code plugin in `plugin/`, not part of the status line, because status line links don't
+work in every terminal (Apple Terminal ignores them). It reads `state.json` every 15 seconds and shows once this
+account is past its switch-at level and another has room. A press sends `POST /api/move` with the `x-mc-token` secret;
+the service checks that the target still has room, opens the new window, stops the session's auto-resume waiter, and
+ignores a repeat press for a minute. The menu bar item sends the same request.
 
 "Fresh, with a note" writes a handover note from the transcript (no AI call) and starts a new session with a
 prompt to read it.

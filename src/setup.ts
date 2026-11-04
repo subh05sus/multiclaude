@@ -4,7 +4,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { HOME, MAIN_CLAUDE_DIR, MC_BIN, MC_DIR, REPO_DIR, LOG_FILE } from './paths.ts';
 import { loadConfig, saveConfig } from './config.ts';
 import { logActivity } from './util.ts';
-import { IS_WIN, IS_MAC, cliCommand, hookCommand, fwd } from './platform.ts';
+import { IS_WIN, IS_MAC, cliCommand, hookCommand, fwd, claudeExecutable, spawnClaudeSync } from './platform.ts';
 
 const SETTINGS = () => join(MAIN_CLAUDE_DIR, 'settings.json');
 // Windows runs these through whatever shell Claude Code uses there, so call Node directly.
@@ -75,6 +75,33 @@ function installResumeHook(s: Settings): boolean {
   if (sf.some((g) => g.hooks?.some((h) => h.command === RESUME_CMD))) return false;
   sf.push({ matcher: 'rate_limit', hooks: [{ type: 'command', command: RESUME_CMD, timeout: RESUME_TIMEOUT, asyncRewake: true }] });
   return true;
+}
+
+const MOVE_PLUGIN = 'multiclaude-move@multiclaude';
+
+/** Whether the "Move to <account>" button is on. */
+export function movePluginEnabled(): boolean {
+  try {
+    const s = JSON.parse(readFileSync(join(MAIN_CLAUDE_DIR, 'settings.json'), 'utf8')) as { enabledPlugins?: Record<string, boolean> };
+    return s.enabledPlugins?.[MOVE_PLUGIN] === true;
+  } catch {
+    return false;
+  }
+}
+
+/** Install the plugin that draws the button. Returns what went wrong, if anything. */
+export function installMovePlugin(): string | null {
+  if (movePluginEnabled()) return null;
+  const exe = claudeExecutable(loadConfig().claudePath);
+  spawnClaudeSync(exe, ['plugin', 'marketplace', 'add', REPO_DIR], { encoding: 'utf8' });
+  const r = spawnClaudeSync(exe, ['plugin', 'install', MOVE_PLUGIN, '--scope', 'user'], { encoding: 'utf8' });
+  return r.status === 0 ? null : String(r.stderr || r.stdout || r.error?.message || 'install failed').trim();
+}
+
+export function removeMovePlugin(): void {
+  const exe = claudeExecutable(loadConfig().claudePath);
+  spawnClaudeSync(exe, ['plugin', 'uninstall', MOVE_PLUGIN, '--scope', 'user'], { encoding: 'utf8' });
+  spawnClaudeSync(exe, ['plugin', 'marketplace', 'remove', 'multiclaude'], { encoding: 'utf8' });
 }
 
 export function setResumeHook(on: boolean): boolean {

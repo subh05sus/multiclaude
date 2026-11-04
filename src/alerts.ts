@@ -76,7 +76,7 @@ export function checkAlerts(cfg: Config, profile: string, u: Usage, next: () => 
     if (crossed === undefined || (prev && prev.level >= crossed && sameWindow(prev.resetsAt, win.resetsAt))) continue;
 
     const n = next();
-    const tail = n ? ` Next in your order with room: ${n}. Run "mc next" to move there.` : '';
+    const tail = n ? ` Next in your order with room: ${n}. Run "mc next" to move there, or press "Move to ${n}" under the prompt once it appears.` : '';
     notify('multiclaude', `${profile} is at ${Math.round(win.pct)}% of its ${w.label} limit (resets ${when(win.resetsAt)}).${tail}`);
     logActivity('alert', `${Math.round(win.pct)}% of the ${w.label} limit${n ? `; next with room: ${n}` : ''}`, profile);
     state[key] = { level: crossed, resetsAt: win.resetsAt };
