@@ -20,7 +20,16 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm run lint
+      - name: Ensure Linux terminal worker test prerequisites
+        if: runner.os == 'Linux'
+        run: command -v tmux || (sudo apt-get update && sudo apt-get install -y tmux)
       - run: npm test
+      - name: Test isolated Podman session lifecycle
+        if: runner.os == 'Linux' && matrix.node == '22'
+        run: |
+          podman build --target worker-base -t localhost/mc-worker-test-base -f remote/Containerfile remote
+          podman build --pull=never -t localhost/multiclaude-worker-mock:1 -f test/fixtures/Containerfile test/fixtures
+          MC_TEST_PODMAN=1 node --test test/remote-podman.test.ts
       - name: CLI smoke run
         shell: bash
         env:

@@ -19,6 +19,7 @@
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
+    "@types/ws": "^8.18.2",
     "typescript": "^5.9.0"
   },
   "author": "Subhadip Saha",
@@ -46,5 +47,8 @@
     "darwin",
     "linux",
     "win32"
-  ]
+  ],
+  "dependencies": {
+    "ws": "^8.23.0"
+  }
 }

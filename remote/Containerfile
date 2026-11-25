@@ -1,0 +1,13 @@
+FROM debian:bookworm-slim AS worker-base
+RUN apt-get update && apt-get install -y --no-install-recommends bash ca-certificates curl git python3 tmux libgcc-s1 ripgrep && rm -rf /var/lib/apt/lists/*
+RUN useradd --create-home --uid 1000 worker
+COPY worker.py /opt/mc/worker.py
+USER worker
+ENV HOME=/home/worker TERM=xterm-256color LANG=C.UTF-8
+ENTRYPOINT ["python3", "-I", "/opt/mc/worker.py"]
+
+FROM worker-base
+USER root
+# Keep the binary outside the profile volume.
+RUN export HOME=/root && curl -fsSL https://claude.ai/install.sh -o /tmp/install-claude && bash /tmp/install-claude && install -m 0755 /root/.local/bin/claude /usr/local/bin/claude && rm -rf /tmp/install-claude /root/.local/share/claude
+USER worker

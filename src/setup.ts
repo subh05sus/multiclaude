@@ -171,7 +171,7 @@ export function installBinLink(): string | null {
     // mc.cmd for cmd and PowerShell; a plain `mc` script for Git Bash.
     writeFileSync(join(dir, 'mc.cmd'), `@echo off\r\n${cliCommand()} %*\r\n`);
     writeFileSync(join(dir, 'mc'), `#!/bin/sh\nexec ${cliCommand()} "$@"\n`);
-    return onPathNow(dir) ? null : `Added mc to ${dir}, which isn't on your PATH yet. Add it in Settings → System → About → Advanced system settings → Environment Variables, or run mc from ${fwd(join(REPO_DIR, 'bin'))}.`;
+    return onPathNow(dir) ? null : `Installed mc in ${dir}. Add that directory to your user PATH, or run .\\mc from ${fwd(REPO_DIR)} in PowerShell.`;
   }
   const link = join(dir, 'mc');
   try {
@@ -182,7 +182,7 @@ export function installBinLink(): string | null {
     /* not there yet */
   }
   symlinkSync(MC_BIN, link);
-  return null;
+  return onPathNow(dir) ? null : `Installed mc in ${dir}. Add that directory to PATH in your shell startup file.`;
 }
 
 function plist(label: string, args: string[], keepAlive: boolean): string {

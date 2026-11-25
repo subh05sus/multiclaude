@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <title>Remote dashboard · multiclaude</title>
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/app.css">
+  <script type="module" src="/remote.js"></script>
+</head>
+<body class="remote-dashboard">
+  <header class="topbar-wrap">
+    <div class="topbar">
+      <a class="brand" href="#accounts">
+        <img src="/icon.svg" width="22" height="22" alt="">
+        <span>multiclaude</span>
+      </a>
+      <nav class="seg island nav-island remote-nav" aria-label="Dashboard" hidden>
+        <a href="#accounts" aria-current="page">Accounts</a>
+        <a href="#sessions">Sessions</a>
+      </nav>
+      <div id="actions" class="topbar-actions island" hidden>
+        <button id="refresh" class="btn" type="button">Refresh</button>
+        <button id="lock" class="btn btn-plain" type="button">Lock</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section id="unlock">
+      <div class="page-head">
+        <div class="grow">
+          <h1>Remote dashboard</h1>
+          <p>Open your gateway access key to view accounts and sessions.</p>
+        </div>
+      </div>
+      <div class="group">
+        <div class="row remote-key-row">
+          <label class="row-title" for="key">Access key file</label>
+          <input id="key" type="file">
+        </div>
+      </div>
+    </section>
+
+    <div id="dashboard" hidden>
+      <section id="remote-accounts" class="page" aria-labelledby="accounts-title">
+        <div class="page-head">
+          <div class="grow">
+            <h1 id="accounts-title" tabindex="-1">Accounts</h1>
+            <p>Profiles you can use on this remote host.</p>
+          </div>
+        </div>
+        <div id="profiles" class="accounts"></div>
+      </section>
+      <section id="remote-sessions" class="page" aria-labelledby="sessions-title" hidden>
+        <div class="page-head">
+          <div class="grow">
+            <h1 id="sessions-title" tabindex="-1">Sessions</h1>
+            <p>Copy an attach command and run it in your terminal.</p>
+          </div>
+        </div>
+        <div id="session-list" class="group"></div>
+      </section>
+    </div>
+    <p id="status" class="row-sub remote-status" role="status"></p>
+  </main>
+
+  <nav class="tabbar island remote-nav" aria-label="Dashboard" hidden>
+    <a href="#accounts" aria-current="page">Accounts</a>
+    <a href="#sessions">Sessions</a>
+  </nav>
+</body>
+</html>

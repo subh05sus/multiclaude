@@ -1,0 +1,5 @@
+FROM localhost/mc-worker-test-base
+USER root
+COPY terminal.py /usr/local/bin/claude
+RUN chmod 755 /usr/local/bin/claude
+USER worker

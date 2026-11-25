@@ -8,15 +8,14 @@ Put your accounts in priority order, type `claude`, and it starts on the first o
 Live usage for every account in a dashboard, the menu bar, the terminal and Claude Code's status line.
 
 [Install](#install) · [Quick start](#quick-start) · [Usage guide](docs/usage.md) · [Setup guide](docs/setup.md) ·
-[Configuration](docs/configuration.md) · [How it works](docs/how-it-works.md) · [Troubleshooting](docs/troubleshooting.md)
+[Configuration](docs/configuration.md) · [How it works](docs/how-it-works.md) · [Remote sessions](docs/remote.md) ·
+[Troubleshooting](docs/troubleshooting.md)
 
 [![Latest release](https://img.shields.io/github/v/release/subh05sus/multiclaude)](https://github.com/subh05sus/multiclaude/releases/latest)
 [![CI](https://github.com/subh05sus/multiclaude/actions/workflows/ci.yml/badge.svg)](https://github.com/subh05sus/multiclaude/actions/workflows/ci.yml)
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue)
 ![Platform: macOS, Windows, Linux](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey)
 ![Node 22.18+](https://img.shields.io/badge/node-22.18%2B-green)
-![Runtime dependencies: 0](https://img.shields.io/badge/runtime%20dependencies-0-brightgreen)
-![100% local](https://img.shields.io/badge/100%25-local-8A63D2)
 
 <img src="docs/screenshots/accounts.png" alt="The Accounts page: three accounts in priority order with 5-hour and weekly usage bars, and a briefing that says the next session goes to the first account with room" width="900">
 
@@ -48,6 +47,8 @@ Live usage for every account in a dashboard, the menu bar, the terminal and Clau
 - **Stats** from Claude Code's session files on your computer: what your work would have cost at API prices, per day,
   account, model and project.
 - **Encrypted export** to move your setup to another computer.
+- **Optional remote sessions.** Run Claude Code on your own Linux host and attach from your terminal.
+  Choose a remote profile explicitly and reconnect to the same session after a disconnect. [Remote sessions guide](docs/remote.md)
 
 ### What it deliberately doesn't do
 
@@ -147,7 +148,10 @@ Your existing `~/.claude` becomes the profile called **main**. Nothing in it mov
 **Releases:** every version is on the [releases page](https://github.com/subh05sus/multiclaude/releases), with
 its changes, a source zip (an alternative to `git clone`) and the prebuilt macOS menu bar app.
 
-There's nothing to `npm install` to run it. `npm install` only fetches the TypeScript types for development.
+Local mode runs directly from the checkout. For remote sessions, install the runtime dependency with
+`npm ci --omit=dev` on both ends. If `mc` is missing from PATH, run `node src/cli.ts --install-launcher`
+once from the checkout and follow its PATH instructions. In PowerShell, use `.\mc` from the checkout if
+the global `mc` points to another copy. [Remote sessions guide](docs/remote.md)
 
 ## Quick start
 
@@ -170,6 +174,21 @@ mc next --fresh    # or: a fresh session there with a handover note
 ```
 
 Open the dashboard with `mc ui` (http://127.0.0.1:4880), or use the menu bar icon.
+
+### Remote quick start
+
+After configuring the Linux host, set `MC_SERVER_URL` and `MC_ACCESS_KEY_FILE` on the client. [Remote sessions guide](docs/remote.md)
+
+```sh
+mc r ls                       # list authorized profiles
+mc r new personal             # start a session and print its ID
+mc r ps personal              # list running session IDs
+mc r a personal SESSION_ID    # attach and press Ctrl-] to detach
+mc r rm personal SESSION_ID   # end the session
+```
+
+Attach and end accept a unique ID prefix, or just the profile if it has one running session.
+To try two accounts on one Windows machine, follow the [WSL2 test walkthrough](test.md).
 
 ## Everyday commands
 
@@ -194,10 +213,11 @@ Full reference, with every flag: **[docs/usage.md](docs/usage.md)**.
 | [Usage](docs/usage.md) | Every command; the picker, dashboard, menu bar and status line; alerts, sessions, handover, stats, export |
 | [Configuration](docs/configuration.md) | `~/.multiclaude/config.json` field by field, environment variables, every file multiclaude writes |
 | [How it works](docs/how-it-works.md) | Profiles and sharing, usage sources, picking, the relay, stats, security model |
+| [Remote sessions](docs/remote.md) | Linux host setup, access keys, authentication, billing and terminal commands |
 | [Troubleshooting](docs/troubleshooting.md) | Common problems and fixes, FAQ |
 | [Decisions](docs/decisions.md) | Product and design decisions and why |
 
-## Privacy and security
+## Local mode privacy and security
 
 - Everything runs on your machine. The service listens on `127.0.0.1` only and refuses requests addressed to any
   other host name, so a web page can't reach it.
@@ -213,7 +233,7 @@ Full reference, with every flag: **[docs/usage.md](docs/usage.md)**.
 ## Develop
 
 ```sh
-npm install      # TypeScript types only
+npm ci           # Runtime and development dependencies
 npm test         # relay fallback against a fake Anthropic, picking, usage, links, stats, handover, export, shell
 npm run check    # tsc --noEmit
 npm run lint     # design guard: no side-edge accents, no clipped focus rings, no raw colours in the UI

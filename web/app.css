@@ -287,6 +287,24 @@ main { max-width: calc(var(--col) + 2 * var(--gutter)); margin: 0 auto; padding:
 .meter > em { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; border-radius: 2px; background: var(--label-3); }
 .meter-models { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--label-3); }
 .acct-actions { display: flex; align-items: center; gap: 8px; justify-self: end; }
+.remote-dashboard .nav-island a[aria-current="page"],
+.remote-dashboard .tabbar a[aria-current="page"] { background: var(--fill-3); color: var(--label); }
+.remote-dashboard .remote-account {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  padding: 16px;
+}
+.remote-dashboard .acct-name { margin: 0; overflow-wrap: anywhere; }
+.remote-dashboard .remote-key-row { flex-wrap: wrap; }
+.remote-dashboard #key { max-width: 100%; color: var(--label); font: inherit; }
+.remote-dashboard #key::file-selector-button { font: inherit; }
+.remote-dashboard .remote-session code, .remote-dashboard .remote-status { overflow-wrap: anywhere; }
+.remote-dashboard .remote-status:empty { margin: 0; }
+.remote-dashboard .page-head .grow { min-width: 0; }
+.remote-dashboard .btn { white-space: nowrap; }
+@media (max-width: 480px) {
+  .remote-dashboard .remote-account { grid-template-columns: minmax(0, 1fr) auto; }
+  .remote-dashboard .remote-account .btn { grid-column: 1 / -1; justify-self: start; }
+}
 .empty-meter { font-size: 13px; color: var(--label-3); }
 
 .acct-api { margin-top: 10px; background: var(--cell); border-radius: var(--r-card); padding: 14px 16px 14px 10px; display: grid; grid-template-columns: 28px 1fr auto; gap: 16px; align-items: center; }

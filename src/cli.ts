@@ -17,6 +17,7 @@ import { spawnClaudeSync, claudeExecutable, stopDaemon, onPath, IS_WIN } from '.
 const RESERVED = new Set([
   'claude', 'shell', 'auto', 'next', 'resume', 'handover', 'add', 'remove', 'list', 'ls', 'status', 'order', 'set', 'pick', 'fallback', 'ui',
   'dashboard', 'daemon', 'start', 'stop', 'statusline', 'hook', 'setup', 'uninstall', 'export', 'import', 'doctor', 'help', 'use', 'sessions', 'refresh',
+  'server', 'remote',
 ]);
 
 const HELP = `multiclaude (mc) — several Claude accounts in one Claude Code
@@ -45,6 +46,18 @@ const HELP = `multiclaude (mc) — several Claude accounts in one Claude Code
   mc export <file> [--with-logins]   encrypted backup to move to another Mac
   mc import <file> [--overwrite]
   mc doctor                   check everything is wired up
+
+  mc server serve CONFIG      run the remote HTTPS service
+  mc server login CONFIG OWNER PROFILE
+  mc server keygen NEW_KEY_FILE
+  mc remote profiles | sessions PROFILE | start PROFILE | attach PROFILE ID | end PROFILE ID
+  Remote clients use MC_SERVER_URL and MC_ACCESS_KEY_FILE. Press Ctrl-] to detach.
+  mc r ls | ps PROFILE | new PROFILE | a PROFILE [ID] | rm PROFILE [ID]
+                              remote profiles, sessions, start, attach, end
+  mc s up CONFIG | in CONFIG OWNER PROFILE | key NEW_KEY_FILE
+                              serve, sign in, generate an access key
+  mc --install-launcher       install just the mc command for this checkout
+  Use --s or --r if a local profile already uses the command name.
 `;
 
 function die(msg: string): never {
@@ -480,6 +493,20 @@ async function main(): Promise<void> {
       return;
     }
     case 'doctor': return cmdDoctor();
+    case '--install-launcher': {
+      const note = (await import('./setup.ts')).installBinLink();
+      return void console.log(note ?? 'Installed the mc command.');
+    }
+    case 's': case 'r': case '--s': case '--r':
+    case 'server': case 'remote': case '--server': case '--remote': {
+      if (!cmd.startsWith('--') && loadConfig().profiles.some(p => p.name === cmd)) return launch(cmd, args);
+      try {
+        if (['s', '--s', 'server', '--server'].includes(cmd)) return await (await import('./remote-server.ts')).serverCommand(args);
+        return await (await import('./remote-client.ts')).remoteCommand(args);
+      } catch (err) {
+        die(`multiclaude: ${(err as Error).message}`);
+      }
+    }
     default: {
       const cfg = loadConfig();
       if (cfg.profiles.some((p) => p.name === cmd)) return launch(cmd, args);
